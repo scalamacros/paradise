@@ -1,0 +1,4 @@
+<plugin>
+  <name>macro-paradise-plugin</name>
+  <classname>org.scalalang.macroparadise.Plugin</classname>
+</plugin>
