@@ -12,6 +12,11 @@ class Plugin(val global: Global) extends NscPlugin {
   val description = "Empowers production Scala compiler with latest macro developments"
   val components = List[NscPluginComponent](PluginComponent)
 
+  // install a pretty description for our plugin phase instead of empty string hardcoded for all plugins
+  val phasesDescMapGetter = classOf[Global].getDeclaredMethod("phasesDescMap")
+  val phasesDescMap = phasesDescMapGetter.invoke(global).asInstanceOf[mutable.Map[SubComponent, String]]
+  phasesDescMap(PluginComponent) = "let our powers combine"
+
   object PluginComponent extends NscPluginComponent {
     val global = Plugin.this.global
     import global._
