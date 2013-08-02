@@ -17,6 +17,12 @@ class Plugin(val global: Global) extends NscPlugin {
   val phasesDescMap = phasesDescMapGetter.invoke(global).asInstanceOf[mutable.Map[SubComponent, String]]
   phasesDescMap(PluginComponent) = "let our powers combine"
 
+  // replace Global.analyzer to customize namer and typer
+  val analyzer = new { val global: Plugin.this.global.type = Plugin.this.global } with Analyzer
+  val analyzerField = classOf[Global].getDeclaredField("analyzer")
+  analyzerField.setAccessible(true)
+  analyzerField.set(global, analyzer)
+
   object PluginComponent extends NscPluginComponent {
     val global = Plugin.this.global
     import global._
@@ -26,7 +32,7 @@ class Plugin(val global: Global) extends NscPlugin {
 
     override def newPhase(prev: Phase): StdPhase = new StdPhase(prev) {
       override def apply(unit: CompilationUnit) {
-        println("ASSIMILATION SUCCESSFUL!")
+        // do nothing: everything's already hijacked above
       }
     }
   }
