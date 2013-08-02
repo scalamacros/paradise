@@ -1,0 +1,10 @@
+Macros_1.scala:26: error: macro annotation must extend scala.annotation.StaticAnnotation
+class doubler1 extends Annotation {
+      ^
+Macros_1.scala:31: error: macro annotation cannot be @Inherited
+class doubler2 extends StaticAnnotation {
+      ^
+Macros_1.scala:48: error: macro annotation cannot be a member of another class
+  class doubler5 extends StaticAnnotation {
+        ^
+three errors found

@@ -132,6 +132,12 @@ object build extends Build {
     libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test",
     libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.10.1" % "test",
     publishArtifact in Compile := false,
+    unmanagedSourceDirectories in Test <<= (scalaSource in Test) { (root: File) =>
+      // TODO: I haven't yet ported negative tests to SBT, so for now I'm excluding them
+      val (anns :: Nil, others) = root.listFiles.toList.partition(_.getName == "annotations")
+      val (negAnns, otherAnns) = anns.listFiles.toList.partition(_.getName == "neg")
+      otherAnns ++ others
+    },
     scalacOptions ++= Seq()
     // scalacOptions ++= Seq("-Xprint:typer")
     // scalacOptions ++= Seq("-Xlog-implicits")

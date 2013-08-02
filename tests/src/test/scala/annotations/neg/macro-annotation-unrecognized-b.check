@@ -1,0 +1,4 @@
+Macros_Test_1.scala:31: error: macro annotations cannot be used in the same compilation run that defines them
+  @doubler object C
+   ^
+one error found

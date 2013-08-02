@@ -1,0 +1,33 @@
+Macros_1.scala:30: error: macro annotation has wrong shape:
+  required: def macroTransform(annottees: Any*) = macro ...
+  found   : def macroTransform(annottees: Any*) = ...
+class doubler2 extends StaticAnnotation {
+      ^
+Macros_1.scala:35: error: macro implementation has wrong shape:
+ required: (c: scala.reflect.macros.Context)(annottee: c.Expr[Any]): c.Expr[Any]
+ found   : (c: scala.reflect.macros.Context)(annottees: c.Expr[Any]*): c.Expr[Any]
+parameter names differ: annottee != annottees
+  def macroTransform(annottee: Any) = macro doublerMacro.impl
+                                                         ^
+Macros_1.scala:34: error: macro annotation has wrong shape:
+  required: def macroTransform(annottees: Any*) = macro ...
+  found   : def macroTransform(annottee: Any) = macro ...
+class doubler3 extends StaticAnnotation {
+      ^
+Macros_1.scala:39: error: macro implementation has wrong shape:
+ required: (c: scala.reflect.macros.Context)(myAnnottees: c.Expr[Any]*): c.Expr[Any]
+ found   : (c: scala.reflect.macros.Context)(annottees: c.Expr[Any]*): c.Expr[Any]
+parameter names differ: myAnnottees != annottees
+  def macroTransform(myAnnottees: Any*) = macro doublerMacro.impl
+                                                             ^
+Macros_1.scala:38: error: macro annotation has wrong shape:
+  required: def macroTransform(annottees: Any*) = macro ...
+  found   : def macroTransform(myAnnottees: Any*) = macro ...
+class doubler4 extends StaticAnnotation {
+      ^
+Macros_1.scala:42: error: macro annotation has wrong shape:
+  required: def macroTransform(annottees: Any*) = macro ...
+  found   : def macroTransform[T](annottees: Any*) = macro ...
+class doubler5 extends StaticAnnotation {
+      ^
+6 errors found
