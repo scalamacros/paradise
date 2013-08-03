@@ -1,7 +1,7 @@
 import org.scalatest.FunSuite
 import scala.reflect.runtime.universe._
 
-class DefinitionTests extends FunSuite {
+class Definition extends FunSuite {
   val identity = typeOf[identity].typeSymbol
 
   test("macro annotations get the MACRO flag") {

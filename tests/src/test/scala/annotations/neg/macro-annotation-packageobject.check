@@ -1,0 +1,4 @@
+Pkg_2.scala:1: error: expected start of definition
+@doubler package object pkg
+         ^
+one error found

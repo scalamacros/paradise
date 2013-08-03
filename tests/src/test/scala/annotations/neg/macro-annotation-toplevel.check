@@ -1,0 +1,40 @@
+Test_2.scala:1: error: top-level class without companion can only expand either into an eponymous class or into a block consisting in eponymous companions
+@doubler class C1
+ ^
+Test_2.scala:3: error: top-level object can only expand into an eponymous object
+@doubler object C2
+ ^
+Test_2.scala:5: error: top-level class with companion can only expand into a block consisting in eponymous companions
+@doubler class C3
+ ^
+Test_2.scala:9: error: top-level object can only expand into an eponymous object
+@doubler object C4
+ ^
+Test_2.scala:11: error: top-level class with companion can only expand into a block consisting in eponymous companions
+@doubler class C5
+ ^
+Test_2.scala:12: error: top-level object can only expand into an eponymous object
+@doubler object C5
+ ^
+Test_2.scala:14: error: top-level class with companion can only expand into a block consisting in eponymous companions
+@egoist class C6
+ ^
+Test_2.scala:17: error: top-level class without companion can only expand either into an eponymous class or into a block consisting in eponymous companions
+@suicider class C7
+ ^
+Test_2.scala:19: error: top-level object can only expand into an eponymous object
+@suicider object C8
+ ^
+Test_2.scala:21: error: top-level class with companion can only expand into a block consisting in eponymous companions
+@suicider class C9
+ ^
+Test_2.scala:25: error: top-level object can only expand into an eponymous object
+@suicider object C10
+ ^
+Test_2.scala:27: error: top-level class with companion can only expand into a block consisting in eponymous companions
+@suicider class C11
+ ^
+Test_2.scala:28: error: top-level object can only expand into an eponymous object
+@suicider object C11
+ ^
+13 errors found

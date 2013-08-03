@@ -1,0 +1,10 @@
+Test_2.scala:1: error: denied!
+@identity
+ ^
+Test_2.scala:3: error: denied!
+  @identity def foo(@identity x: Int) = ???
+   ^
+Test_2.scala:3: error: denied!
+  @identity def foo(@identity x: Int) = ???
+                     ^
+three errors found

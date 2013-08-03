@@ -4,14 +4,14 @@ package reflect
 import scala.tools.nsc.{Global => NscGlobal}
 
 trait Enrichments extends Definitions
-                     with StdNames {
+                     with StdNames
+                     with TreeInfo
+                     with StdAttachments
+                     with Trees
+                     with ReflectionUtils
+                     with Mirrors
+                     with Symbols {
 
   val global: NscGlobal
-  import global._
-  import scala.reflect.internal.Flags._
-
-  implicit class ParadiseSymbol(sym: Symbol) {
-    def isAnnotationMacro = sym.isTermMacro && sym.owner.isMacroAnnotation && sym.name == paradiseNme.macroTransform
-    def isMacroAnnotation = sym.isClass && sym.hasFlag(MACRO)
-  }
+  def installationFailure() = global.abort("failed to install macro paradise plugin")
 }

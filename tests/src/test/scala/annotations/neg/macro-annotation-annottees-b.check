@@ -1,0 +1,7 @@
+Test_2.scala:2: error: macro annotations can only be put on definitions
+  def foo[@identity T]: T @identity = ???
+                           ^
+Test_2.scala:3: error: macro annotations can only be put on definitions
+  println(2: @identity)
+              ^
+two errors found

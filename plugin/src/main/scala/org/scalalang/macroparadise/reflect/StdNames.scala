@@ -5,7 +5,7 @@ trait StdNames {
   self: Enrichments =>
   import global._
 
-  object paradiseNme {
+  implicit class ParadiseNme(nme: global.nme.type) {
     val annottees: TermName      = "annottees"
     val macroTransform: TermName = "macroTransform"
   }

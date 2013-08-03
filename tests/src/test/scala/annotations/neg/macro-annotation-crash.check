@@ -1,0 +1,43 @@
+Test_2.scala:1: error: exception during macro expansion: 
+scala.NotImplementedError: an implementation is missing
+	at scala.Predef$.$qmark$qmark$qmark(Predef.scala:252)
+	at identityMacro$.impl(Macros_1.scala:8)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+	at java.lang.reflect.Method.invoke(Method.java:597)
+	at scala.tools.nsc.typechecker.Macros$$anonfun$scala$tools$nsc$typechecker$Macros$$macroRuntime$3$$anonfun$apply$8.apply(Macros.scala:544)
+	at scala.tools.nsc.typechecker.Macros$$anonfun$scala$tools$nsc$typechecker$Macros$$macroRuntime$3$$anonfun$apply$8.apply(Macros.scala:544)
+	at scala.tools.nsc.typechecker.Macros$class.scala$tools$nsc$typechecker$Macros$$macroExpandWithRuntime(Macros.scala:830)
+
+@identity
+ ^
+Test_2.scala:3: error: exception during macro expansion: 
+scala.NotImplementedError: an implementation is missing
+	at scala.Predef$.$qmark$qmark$qmark(Predef.scala:252)
+	at identityMacro$.impl(Macros_1.scala:8)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+	at java.lang.reflect.Method.invoke(Method.java:597)
+	at scala.tools.nsc.typechecker.Macros$$anonfun$scala$tools$nsc$typechecker$Macros$$macroRuntime$3$$anonfun$apply$8.apply(Macros.scala:544)
+	at scala.tools.nsc.typechecker.Macros$$anonfun$scala$tools$nsc$typechecker$Macros$$macroRuntime$3$$anonfun$apply$8.apply(Macros.scala:544)
+	at scala.tools.nsc.typechecker.Macros$class.scala$tools$nsc$typechecker$Macros$$macroExpandWithRuntime(Macros.scala:830)
+
+  @identity def foo(@identity x: Int) = ???
+   ^
+Test_2.scala:3: error: exception during macro expansion: 
+scala.NotImplementedError: an implementation is missing
+	at scala.Predef$.$qmark$qmark$qmark(Predef.scala:252)
+	at identityMacro$.impl(Macros_1.scala:8)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+	at java.lang.reflect.Method.invoke(Method.java:597)
+	at scala.tools.nsc.typechecker.Macros$$anonfun$scala$tools$nsc$typechecker$Macros$$macroRuntime$3$$anonfun$apply$8.apply(Macros.scala:544)
+	at scala.tools.nsc.typechecker.Macros$$anonfun$scala$tools$nsc$typechecker$Macros$$macroRuntime$3$$anonfun$apply$8.apply(Macros.scala:544)
+	at scala.tools.nsc.typechecker.Macros$class.scala$tools$nsc$typechecker$Macros$$macroExpandWithRuntime(Macros.scala:830)
+
+  @identity def foo(@identity x: Int) = ???
+                     ^
+three errors found

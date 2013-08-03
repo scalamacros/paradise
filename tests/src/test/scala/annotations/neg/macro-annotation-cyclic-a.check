@@ -1,0 +1,4 @@
+Test_2.scala:1: error: illegal cyclic reference involving class B
+@xrefCyclist class A
+                   ^
+one error found

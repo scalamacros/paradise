@@ -1,0 +1,7 @@
+Test_2.scala:2: error: illegal start of declaration
+  type T1 = List[T] forSome { @identity type T <: Int }
+                              ^
+Test_2.scala:3: error: illegal start of declaration
+  type T2 = List[Int] { @identity def head: Int }
+                        ^
+two errors found
