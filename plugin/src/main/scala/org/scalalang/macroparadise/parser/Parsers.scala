@@ -13,7 +13,7 @@ import scala.reflect.internal.Chars.{isScalaLetter}
 import scala.reflect.internal.util.{SourceFile, OffsetPosition}
 import scala.tools.nsc.{Global => NscGlobal}
 import scala.tools.nsc.{ScriptRunner, ListOfNil}
-import scala.tools.nsc.util.FreshNameCreator
+import scala.tools.nsc.util.{FreshNameCreator, CharArrayReader}
 import scala.tools.nsc.ast.parser.{Scanners => NscScanners, ParsersCommon => NscParsersCommon, TreeBuilder => NscTreeBuilder}
 import scala.tools.nsc.ast.parser.Tokens._
 import scala.tools.nsc.ast.parser.{BracePatch}
@@ -80,6 +80,63 @@ self =>
       else () => scriptBody()
 
     def newScanner = new SourceFileScanner(source)
+
+    class CharArrayReaderData {
+      var ch: Char = _
+      var charOffset: Int = 0
+      var lineStartOffset: Int = 0
+      var lastLineStartOffset: Int = 0
+
+      def copyFrom(cd: CharArrayReader): this.type = {
+        this.ch = cd.ch
+        this.charOffset = cd.charOffset
+        this.lineStartOffset = cd.lineStartOffset
+        this.lastLineStartOffset = cd.lastLineStartOffset
+        this
+      }
+
+      def copyTo(cd: CharArrayReader): this.type = {
+        cd.ch = this.ch
+        cd.charOffset = this.charOffset
+        cd.lineStartOffset = this.lineStartOffset
+        cd.lastLineStartOffset = this.lastLineStartOffset
+        this
+      }
+    }
+
+    class ScannerData extends  {
+      val next: TokenData = new TokenData{}
+      val prev: TokenData = new TokenData{}
+      val charArrayData = new CharArrayReaderData
+      val tokenData = new TokenData{}
+
+      def copyFrom(sd: Scanner): this.type = {
+        this.next copyFrom sd.next
+        this.prev copyFrom sd.prev
+        charArrayData copyFrom sd
+        tokenData copyFrom sd
+        this
+      }
+
+      def copyTo(sd: Scanner): this.type = {
+        sd.next copyFrom this.next
+        sd.prev copyFrom this.prev
+        sd copyFrom tokenData
+        charArrayData copyTo sd
+        this
+      }
+    }
+
+    /** Scoping operator used to temporarily look into the future.
+     *  Backs up scanner data before evaluating a block and restores it after.
+     */
+    def lookingAhead[T](body: => T): T = {
+      val snapshot = new ScannerData().copyFrom(in)
+      in.nextToken()
+      val res = body
+      snapshot copyTo in
+      res
+    }
 
     val in = newScanner
     in.init()
