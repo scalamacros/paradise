@@ -14,7 +14,7 @@ import scala.reflect.internal.util.{SourceFile, OffsetPosition}
 import scala.tools.nsc.{Global => NscGlobal}
 import scala.tools.nsc.{ScriptRunner, ListOfNil}
 import scala.tools.nsc.util.FreshNameCreator
-import scala.tools.nsc.ast.parser.{Scanners => NscScanners, ParsersCommon => NscParsersCommon}
+import scala.tools.nsc.ast.parser.{Scanners => NscScanners, ParsersCommon => NscParsersCommon, TreeBuilder => NscTreeBuilder}
 import scala.tools.nsc.ast.parser.Tokens._
 import scala.tools.nsc.ast.parser.{BracePatch}
 
@@ -58,6 +58,15 @@ trait ParadiseParsers extends NscScanners with ParadiseMarkupParsers with NscPar
 self =>
   val global: NscGlobal
   import global._
+
+  class ParadiseParserTreeBuilder extends NscTreeBuilder {
+    val global: self.global.type = self.global
+    def freshName(prefix: String): Name               = freshTermName(prefix)
+    def freshTermName(prefix: String): TermName       = currentUnit.freshTermName(prefix)
+    def freshTypeName(prefix: String): TypeName       = currentUnit.freshTypeName(prefix)
+    def o2p(offset: Int): Position                    = new OffsetPosition(currentUnit.source, offset)
+    def r2p(start: Int, mid: Int, end: Int): Position = rangePos(currentUnit.source, start, mid, end)
+  }
 
   case class OpInfo(operand: Tree, operator: Name, offset: Offset)
 
@@ -210,6 +219,7 @@ self =>
     /** whether a non-continuable syntax error has been seen */
     private var lastErrorOffset : Int = -1
 
+    val treeBuilder = new ParadiseParserTreeBuilder
     import treeBuilder.{global => _, _}
 
     /** The types of the context bounds of type parameters of the surrounding class
