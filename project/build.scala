@@ -102,12 +102,13 @@ object build extends Build {
 
   lazy val usePluginSettings = Seq(
     scalacOptions in Compile <++= (Keys.`package` in (plugin, Compile)) map { (jar: File) =>
-       val addPlugin = "-Xplugin:" + jar.getAbsolutePath
-       // Thanks Jason for this cool idea (taken from https://github.com/retronym/boxer)
-       // add plugin timestamp to compiler options to trigger recompile of
-       // main after editing the plugin. (Otherwise a 'clean' is needed.)
-       val dummy = "-Jdummy=" + jar.lastModified
-       Seq(addPlugin, dummy)
+      System.setProperty("macroparadise.plugin.jar", jar.getAbsolutePath)
+      val addPlugin = "-Xplugin:" + jar.getAbsolutePath
+      // Thanks Jason for this cool idea (taken from https://github.com/retronym/boxer)
+      // add plugin timestamp to compiler options to trigger recompile of
+      // main after editing the plugin. (Otherwise a 'clean' is needed.)
+      val dummy = "-Jdummy=" + jar.lastModified
+      Seq(addPlugin, dummy)
     }
   )
 

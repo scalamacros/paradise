@@ -83,17 +83,29 @@ class Plugin(val global: Global) extends NscPlugin {
 
     override def newPhase(prev: Phase): StdPhase = new StdPhase(prev) {
       override def apply(unit: CompilationUnit) {
-        // do nothing: everything's already hijacked above
+        // do nothing else: everything's already hijacked
+        ensureInitialized()
+      }
+    }
+
+    var uninitialized = true
+    def ensureInitialized() = {
+      if (uninitialized) {
+        uninitialized = false
+        Plugin.this.analyzer.init()
       }
     }
   }
 
   override def processOptions(options: List[String], error: String => Unit) {
     options foreach {
+      case "-Yquasiquote-debug" => Settings.Yquasiquotedebug.value = true
       case option => error("Option not understood: " + option)
     }
   }
 
   override val optionsHelp: Option[String] = Some("""
+    |  -P:macroparadise:
+    |      -Yquasiquote-debug     Trace quasiquote-related activities.
   """.trim.stripMargin)
 }
