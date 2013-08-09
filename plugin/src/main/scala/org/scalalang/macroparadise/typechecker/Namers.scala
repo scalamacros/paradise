@@ -111,6 +111,7 @@ trait Namers {
             m.moduleClass setFlag moduleClassFlags(moduleFlags)
             setPrivateWithin(tree, m.moduleClass)
           }
+          m.moduleClass setInfo namerOf(m).moduleClassTypeCompleter(tree)
           if (m.owner.isPackageClass && !m.isPackage) {
             m.moduleClass.associatedFile = contextFile
             currentRun.symSource(m) = m.moduleClass.sourceFile
@@ -202,7 +203,6 @@ trait Namers {
           validateCompanionDefs(tree)
         case tree @ ModuleDef(_, _, _) =>
           unmarkWeak(sym)
-          sym.moduleClass setInfo namerOf(sym).moduleClassTypeCompleter(tree)
           sym setInfo completerOf(tree)
           validateCompanionDefs(tree)
         case tree @ ValDef(_, _, _, _) =>
