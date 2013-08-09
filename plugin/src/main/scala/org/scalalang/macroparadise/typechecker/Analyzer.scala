@@ -18,7 +18,11 @@ trait Analyzer extends NscAnalyzer
   addAnalyzerPlugin(ParadiseAnalyzerPlugin)
 
   def init() = {
-    paradiseDefinitions.init()
-    fastTrack.hijack()
+    import global._
+    import definitions._
+    if (ApiUniverseClass != NoSymbol) {
+      paradiseDefinitions.init()
+      fastTrack.hijack()
+    }
   }
 }
