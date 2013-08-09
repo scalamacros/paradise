@@ -12,7 +12,7 @@ trait FastTrack {
     fastTrackField.setAccessible(true)
     val fastTrack = fastTrackField.get(self).asInstanceOf[Map[Symbol, FastTrackEntry]]
     val fastTrackExpander: FastTrackExpander = { case (c, tree) => expander(c, tree) }
-    fastTrackField.set(self, fastTrack + (sym -> FastTrackEntry(sym, fastTrackExpander)))
+    fastTrackField.set(self, fastTrack + ((sym, FastTrackEntry(sym, fastTrackExpander))))
   }
 
   implicit class ParadiseFastTrack(fastTrack: self.fastTrack.type) {

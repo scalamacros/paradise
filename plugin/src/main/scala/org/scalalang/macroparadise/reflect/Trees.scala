@@ -64,7 +64,7 @@ trait Trees {
         }
 
         // undo flag modifications by merging flag info from constructor args and fieldValDefs
-        val modsMap = fieldValDefs.map { case ValDef(mods, name, _, _) => name -> mods }.toMap
+        val modsMap = fieldValDefs.map { case ValDef(mods, name, _, _) => (name, mods) }.toMap
         val vparamss = mmap(vparamssRestoredImplicits) { vd =>
           val defaultMods = Modifiers(PRIVATE | LOCAL | PARAMACCESSOR)
           val originalMods = modsMap.get(vd.name).getOrElse(defaultMods) | (vd.mods.flags & DEFAULTPARAM)
