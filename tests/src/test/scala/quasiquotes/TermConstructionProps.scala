@@ -13,7 +13,8 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
   }
 
   property("splice trees into if expression") = forAll { (t1: Tree, t2: Tree, t3: Tree) =>
-    q"if($t1) $t2 else $t3" ≈ If(t1, t2, t3)
+    val Apply(Ident(__ifThenElse), List(cond1, then1, else1)) = q"if($t1) $t2 else $t3"
+    __ifThenElse == newTermName("__ifThenElse") && cond1 ≈ t1 && then1 ≈ t2 && else1 ≈ t3
   }
 
   property("splice trees into ascriptiopn") = forAll { (t1: Tree, t2: Tree) =>
@@ -39,7 +40,8 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
   }
 
   property("splice term name into assign") = forAll { (name: TermName, t: Tree) =>
-    q"$name = $t" ≈ Assign(Ident(name), t)
+    val Apply(Ident(__assign), List(name1, t1)) = q"$name = $t"
+    __assign == newTermName("__assign") && name1 ≈ Ident(name) && t1 ≈ t
   }
 
   property("splice trees into block") = forAll { (t1: Tree, t2: Tree, t3: Tree) =>
@@ -56,7 +58,8 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
   }
 
   property("splice tree into return") = forAll { (tree: Tree) =>
-    q"return $tree" ≈ Return(tree)
+    val Apply(Ident(__return), List(tree1)) = q"return $tree"
+    __return == newTermName("__return") && tree1 ≈ tree
   }
 
   property("splice a list of arguments") = forAll { (fun: Tree, args: List[Tree]) =>
@@ -105,13 +108,13 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
   }
 
   property("splice trees into while loop") = forAll { (cond: Tree, body: Tree) =>
-    val LabelDef(_, List(), If(cond1, Block(List(body1), Apply(_, List())), Literal(Constant(())))) = q"while($cond) $body"
-    body1 ≈ body && cond1 ≈ cond
+    val Apply(Ident(__whileDo), List(cond1, body1)) = q"while($cond) $body"
+    __whileDo == newTermName("__whileDo") && body1 ≈ body && cond1 ≈ cond
   }
 
   property("splice trees into do while loop") = forAll { (cond: Tree, body: Tree) =>
-    val LabelDef(_, List(), Block(List(body1), If(cond1, Apply(_, List()), Literal(Constant(()))))) = q"do $body while($cond)"
-    body1 ≈ body && cond1 ≈ cond
+    val Apply(Ident(__doWhile), List(body1, cond1)) = q"do $body while($cond)"
+    __doWhile == newTermName("__doWhile") && body1 ≈ body && cond1 ≈ cond
   }
 
   property("splice trees into alternative") = forAll { (c: Tree, A: Tree, B: Tree) =>
