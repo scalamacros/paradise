@@ -62,7 +62,7 @@ trait Typers {
       val cdef1 = super.typedClassDef(cdef)
       val clazz = cdef1.symbol
       if (!isPastTyper) {
-        if (clazz isNonBottomSubClass AnnotationClass) {
+        if (clazz != null && (clazz isNonBottomSubClass AnnotationClass)) {
           val macroTransform = clazz.info.member(nme.macroTransform)
           if (macroTransform != NoSymbol) {
             def flavorOk = macroTransform.isMacro
