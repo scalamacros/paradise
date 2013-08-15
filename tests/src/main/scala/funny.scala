@@ -8,7 +8,7 @@ object funnyMacro {
     val (annottee: MemberDef) :: (expandee: MemberDef) :: rest = annottees.map(_.tree).toList
     def funnify[T <: Name](name: T): T = {
       val sfunnified = name.toString + annottee.name.toString
-      val funnified = if (name.isTermName) newTermName(sfunnified) else newTypeName(sfunnified)
+      val funnified = if (name.isTermName) TermName(sfunnified) else TypeName(sfunnified)
       funnified.asInstanceOf[T]
     }
     val expandee1 = {

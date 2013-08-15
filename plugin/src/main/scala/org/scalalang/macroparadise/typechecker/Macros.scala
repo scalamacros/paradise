@@ -21,7 +21,6 @@ trait Macros {
         meth.invoke(null, args: _*)
       } catch unwrapHandler({ case ex => throw ex })
     }
-    def macroRuntime(symbol: Symbol) = invokeTraitPrivateMethod(classOf[scala.tools.nsc.typechecker.Macros], "macroRuntime", self, symbol).asInstanceOf[MacroRuntime]
     def macroExpandWithRuntime(typer: Typer, expandee: Tree, runtime: MacroRuntime): Option[Tree] = macroExpand1 {
       val result = invokeTraitPrivateMethod(classOf[scala.tools.nsc.typechecker.Macros], "macroExpandWithRuntime", self, typer, expandee, runtime)
       result match {

@@ -13,8 +13,7 @@ trait Enrichments extends Definitions
                      with Trees
                      with ReflectionUtils
                      with Mirrors
-                     with Symbols
-                     with TreeGen {
+                     with Symbols {
 
   val global: NscGlobal
   implicit def paradiseSettings(settings: NscSettings) = ParadiseSettings

@@ -20,7 +20,7 @@ trait TreeInfo {
     def getAnnotationZippers(tree: Tree): List[AnnotationZipper] = {
       def loop[T <: Tree](tree: T, deep: Boolean): List[AnnotationZipper] = tree match {
         case cdef @ ClassDef(mods, _, _, _) =>
-          val SyntacticClassDef(mods, name, tparams, ctormods, vparamss, parents, argss, selfdef, body, superpos) = cdef
+          val SyntacticClassDef(mods, name, tparams, constrMods, vparamss, parents, selfdef, body) = cdef
           val czippers = mods.annotations.map(ann => {
             val annottee = cdef.copy(mods = mods.mapAnnotations(_ diff List(ann)))
             AnnotationZipper(ann, annottee, annottee)
@@ -38,7 +38,7 @@ trait TreeInfo {
               AnnotationZipper(ann, vparam1: ValDef, _) <- loop(vparam, deep = false)
               vparams1 = vparams.updated(vparams.indexOf(vparam), vparam1)
               vparamss1 = vparamss.updated(vparamss.indexOf(vparams), vparams1)
-            } yield AnnotationZipper(ann, vparam1, SyntacticClassDef(mods, name, tparams, ctormods, vparamss1, parents, argss, selfdef, body, superpos))
+            } yield AnnotationZipper(ann, vparam1, SyntacticClassDef(mods, name, tparams, constrMods, vparamss1, parents, selfdef, body))
             czippers ++ tzippers ++ vzippers
           }
         case mdef @ ModuleDef(mods, _, _) =>

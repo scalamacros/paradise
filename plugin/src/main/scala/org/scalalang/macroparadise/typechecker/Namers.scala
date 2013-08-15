@@ -22,7 +22,7 @@ trait Namers {
           case tree @ Import(_, _) =>
             createAssignAndEnterSymbol(tree)
             finishSymbol(tree)
-            returnContext = context.makeNewImport(tree)
+            returnContext = context.make(tree)
           case tree: MemberDef =>
             createAssignAndEnterSymbol(tree)
             finishSymbol(tree)
@@ -65,7 +65,7 @@ trait Namers {
           val existing = context.scope.lookup(name)
           val isRedefinition = (
                existing.isType
-            && existing.owner.isPackageClass
+            && existing.isTopLevel
             && context.scope == existing.owner.info.decls
             && (
                  currentRun.canRedefine(existing) ||
@@ -81,10 +81,9 @@ trait Namers {
             }
             else coreCreateAssignAndEnterSymbol setFlag inConstructorFlag
           }
-          if (clazz.isClass && clazz.owner.isPackageClass) {
-            val file = contextFile
+          if (clazz.isClass && clazz.isTopLevel) {
             if (clazz.sourceFile != null && clazz.sourceFile != contextFile)
-              debugwarn("!!! Source mismatch in " + clazz + ": " + clazz.sourceFile + " vs. " + contextFile)
+              devWarning(s"Source file mismatch in $clazz: ${clazz.sourceFile} vs. $contextFile")
 
             clazz.associatedFile = contextFile
             if (clazz.sourceFile != null) {
@@ -112,7 +111,7 @@ trait Namers {
             setPrivateWithin(tree, m.moduleClass)
           }
           m.moduleClass setInfo namerOf(m).moduleClassTypeCompleter(tree)
-          if (m.owner.isPackageClass && !m.isPackage) {
+          if (m.isTopLevel && !m.isPackage) {
             m.moduleClass.associatedFile = contextFile
             currentRun.symSource(m) = m.moduleClass.sourceFile
             registerTopLevelSym(m)
@@ -176,8 +175,6 @@ trait Namers {
         case tree @ ClassDef(mods, name, tparams, impl) =>
           sym setInfo completerOf(tree)
           if (mods.isCase) {
-            if (treeInfo.primaryConstructorArity(tree) > MaxFunctionArity)
-              MaxParametersCaseClassError(tree)
             val m = ensureCompanionObject(tree, caseModuleDef)
             m.moduleClass.updateAttachment(new ClassForCaseCompanionAttachment(tree))
           }
@@ -186,7 +183,7 @@ trait Namers {
             m.updateAttachment(new ConstructorDefaultsAttachment(tree, null))
           }
           val owner = tree.symbol.owner
-          if (settings.lint.value && owner.isPackageObjectClass && !mods.isImplicit) {
+          if (settings.lint && owner.isPackageObjectClass && !mods.isImplicit) {
             context.unit.warning(tree.pos,
               "it is not recommended to define classes/objects inside of package objects.\n" +
               "If possible, define " + tree.symbol + " in " + owner.skipPackageObject + " instead."
@@ -229,7 +226,7 @@ trait Namers {
         case tree @ DefDef(_, nme.CONSTRUCTOR, _, _, _, _) =>
           sym setInfo completerOf(tree)
         case tree @ DefDef(mods, name, tparams, _, _, _) =>
-          val bridgeFlag = if (mods hasAnnotationNamed tpnme.bridgeAnnot) BRIDGE else 0
+          val bridgeFlag = if (mods hasAnnotationNamed tpnme.bridgeAnnot) BRIDGE | ARTIFACT else 0
           sym setFlag bridgeFlag
           if (name == nme.copy && sym.isSynthetic) enterCopyMethod(tree)
           else sym setInfo completerOf(tree)
@@ -337,7 +334,7 @@ trait Namers {
               // however when nested we go all out
               // TODO: unlinking distorts the order of symbols in scope
               // note however that trees (calculated by expandMacroAnnotations) will be generated in correct order
-              if (!sym.owner.isPackageClass) destroy(sym, companion)
+              if (!sym.isTopLevel) destroy(sym, companion)
               enterSyms(expanded) // TODO: we can't reliably expand into imports, because they won't be accounted by definitions below us
             case None =>
               markNotExpandable(sym)
@@ -347,7 +344,7 @@ trait Namers {
           // take care of the companion if it's no longer needed
           // we can't do this in companion's completer, because that one isn't guaranteed to ever be called
           val expandedWithoutCompanion = isExpanded(sym) && attachedExpansion(companion).map(_.isEmpty).getOrElse(false)
-          val companionHasReemerged = expandedWithoutCompanion && sym.owner.isPackageClass && !isWeak(companion)
+          val companionHasReemerged = expandedWithoutCompanion && sym.isTopLevel && !isWeak(companion)
           val notExpandableWeakCompanion = isNotExpandable(sym) && isWeak(companion)
           if ((expandedWithoutCompanion && !companionHasReemerged) || notExpandableWeakCompanion) destroy(companion)
         }
@@ -410,7 +407,7 @@ trait Namers {
       def member(tpe: Type, name: Name) = if (canDefineMann(tpe.typeSymbol)) tpe.member(name) else NoSymbol
       def nonLocalMember(tpe: Type, name: Name) = if (canDefineMann(tpe.typeSymbol)) tpe.nonLocalMember(name) else NoSymbol
 
-      if (tpt.hasSymbol && tpt.symbol != NoSymbol) tpt.symbol
+      if (tpt.hasSymbolField && tpt.symbol != NoSymbol) tpt.symbol
       else tpt match {
         case Ident(name) =>
 
@@ -505,7 +502,7 @@ trait Namers {
       val wasTransient = companion == NoSymbol || companion.isSynthetic
       val typer = (
         // expanding at top level => allow the macro to see everything
-        if (sym.owner.isPackageClass) newTyper(context)
+        if (sym.isTopLevel) newTyper(context)
         // expanding at template level => only allow to see outside of the enclosing class
         // we have to skip two contexts:
         //  1) the Template context that hosts members

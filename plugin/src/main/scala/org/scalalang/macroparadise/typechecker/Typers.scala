@@ -8,6 +8,7 @@ trait Typers {
   import definitions._
   import paradiseDefinitions._
   import scala.reflect.internal.Flags._
+  import scala.reflect.internal.Mode
 
   trait ParadiseTyper extends Typer with ParadiseTyperContextErrors {
     import ParadiseTyperErrorGen._
@@ -20,7 +21,7 @@ trait Typers {
        (!isWeak(sym) || sym.info != NoType) && sym.exists
     }
 
-    override def typed1(tree: Tree, mode: Int, pt: Type): Tree = {
+    override def typed1(tree: Tree, mode: Mode, pt: Type): Tree = {
       def typedAnnotated(atd: Annotated): Tree = {
         val result = super.typed1(tree, mode, pt)
         val anns = if (result.tpe != null) result.tpe.annotations else Nil
@@ -51,7 +52,7 @@ trait Typers {
       super.typedTemplate(treeCopy.Template(templ, parents, self, body1), parents1)
     }
 
-    override def typedBlock(block: Block, mode: Int, pt: Type): Block = {
+    override def typedBlock(block: Block, mode: Mode, pt: Type): Block = {
       val Block(stats, expr) = block
       namer.enterSyms(stats)
       val stats1 = namer.expandMacroAnnotations(stats)
@@ -82,36 +83,6 @@ trait Typers {
         }
       }
       cdef1
-    }
-
-    override def doTypedUnapply(tree: Tree, fun0: Tree, fun: Tree, args: List[Tree], mode: Int, pt: Type): Tree = {
-      val unapply = unapplyMember(fun.tpe)
-      if (QuasiquoteMacros.contains(unapply)) {
-        val expandee = treeCopy.Apply(tree, gen.mkAttributedSelect(fun, unapply), args)
-        val expanded = duplicateAndKeepPositions(atPos(tree.pos)(expandUntyped(this, expandee).getOrElse(tree)))
-        typed(expanded, mode, pt)
-      } else {
-        super.doTypedUnapply(tree, fun0, fun, args, mode, pt)
-      }
-    }
-
-    // suppress existential warnings for our dependently-typed quasiquote extractors
-    // see QuasiquoteCompat.scala for more information for details
-    override def checkExistentialsFeature(pos: Position, tpe: Type, prefix: String): Unit = {
-      def shouldSuppress(quant: Symbol) = {
-        // some debug output
-        // extp pretty = List[_50.u.Tree] forSome { val _50: scala.reflect.api.QuasiquoteCompat.AppliedExtractor{val u: reflect.runtime.universe.type} }
-        // extp raw = ExistentialType(List(newTypeName("_50.type")), TypeRef(ThisType(scala.collection.immutable), scala.collection.immutable.List, List(TypeRef(SingleType(TypeRef(NoPrefix, newTypeName("_50.type"), List()), newTermName("u")), newTypeName("Tree"), List()))))
-        // quant.tpe pretty = _50.type
-        // quant.tpe raw = TypeRef(NoPrefix, newTypeName("_50.type"), List())
-        // quant.info pretty = <: scala.reflect.api.QuasiquoteCompat.AppliedExtractor{val u: reflect.runtime.universe.type} with Singleton
-        // quant.info raw = TypeBounds(TypeRef(ThisType(scala), scala.Nothing, List()), RefinedType(List(RefinedType(List(TypeRef(ThisType(scala.reflect.api.QuasiquoteCompat), scala.reflect.api.QuasiquoteCompat.AppliedExtractor, List())), Scope(newTermName("u"))), TypeRef(ThisType(scala), scala.Singleton, List())), Scope()))
-        quant.info.exists(_.typeSymbol.sourceModule.rawname == newTermName("QuasiquoteCompat"))
-      }
-      tpe match {
-        case extp @ ExistentialType(quants, underlying) if !extp.isRepresentableWithWildcards && quants.exists(shouldSuppress) => ()
-        case _ => super.checkExistentialsFeature(pos, tpe, prefix)
-      }
     }
   }
 }

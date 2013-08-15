@@ -15,7 +15,7 @@ object explorerMacro {
     val result = {
       annottees.map(_.tree).toList match {
         case ModuleDef(mods, name, Template(parents, self, body)) :: Nil =>
-          val toStringMethod = DefDef(Modifiers(OVERRIDE), newTermName("toString"), List(), List(List()), TypeTree(), Literal(Constant(explore())))
+          val toStringMethod = DefDef(Modifiers(OVERRIDE), TermName("toString"), List(), List(List()), TypeTree(), Literal(Constant(explore())))
           ModuleDef(mods, name, Template(parents, self, body :+ toStringMethod))
       }
     }

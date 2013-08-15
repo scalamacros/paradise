@@ -22,7 +22,6 @@ case class EmbeddedFile(val resourcePath: String) extends AbstractFile {
   def delete() = unsupported()
   def lookupName(name: String, directory: Boolean) = null
   def lookupNameUnchecked(name: String, directory: Boolean) = null
-  override def lookupPath(path: String, directory: Boolean) = null
   override def lookupPathUnchecked(path: String, directory: Boolean) = null
   private var _lastModified: Long = 0
   def lastModified: Long = _lastModified

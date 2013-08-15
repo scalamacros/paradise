@@ -8,7 +8,7 @@ object doublerMacro {
     val result = {
       def double[T <: Name](name: T): T = {
         val sdoubled = name.toString + name.toString
-        val doubled = if (name.isTermName) newTermName(sdoubled) else newTypeName(sdoubled)
+        val doubled = if (name.isTermName) TermName(sdoubled) else TypeName(sdoubled)
         doubled.asInstanceOf[T]
       }
       annottees.map(_.tree).toList match {

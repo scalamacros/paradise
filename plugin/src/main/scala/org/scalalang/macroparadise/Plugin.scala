@@ -12,11 +12,6 @@ class Plugin(val global: Global) extends NscPlugin {
   val description = "Empowers production Scala compiler with latest macro developments"
   val components = List[NscPluginComponent](PluginComponent)
 
-  // install a pretty description for our plugin phase instead of empty string hardcoded for all plugins
-  val phasesDescMapGetter = classOf[Global].getDeclaredMethod("phasesDescMap")
-  val phasesDescMap = phasesDescMapGetter.invoke(global).asInstanceOf[mutable.Map[SubComponent, String]]
-  phasesDescMap(PluginComponent) = "let our powers combine"
-
   // replace Global.analyzer to customize namer and typer (step 1 of 3)
   // unfortunately compiler plugins are instantiated too late
   // therefore by now analyzer has already been used to instantiate the namer, packageobjects and typer subcomponents
@@ -40,7 +35,11 @@ class Plugin(val global: Global) extends NscPlugin {
     def subcomponentNamed(name: String) = phasesSet.find(_.phaseName == name).head
     val oldScs @ List(oldNamer, oldPackageobjects, oldTyper) = List(subcomponentNamed("namer"), subcomponentNamed("packageobjects"), subcomponentNamed("typer"))
     val newScs = List(analyzer.namerFactory, analyzer.packageObjects, analyzer.typerFactory)
-    def hijackDescription(pt: SubComponent, sc: SubComponent) = phasesDescMap(sc) = phasesDescMap(pt) + " in paradise"
+    def hijackDescription(pt: SubComponent, sc: SubComponent) = {
+      val phasesDescMapGetter = classOf[Global].getDeclaredMethod("phasesDescMap")
+      val phasesDescMap = phasesDescMapGetter.invoke(global).asInstanceOf[mutable.Map[SubComponent, String]]
+      phasesDescMap(sc) = phasesDescMap(pt) + " in paradise"
+    }
     oldScs zip newScs foreach { case (pt, sc) => hijackDescription(pt, sc) }
     phasesSet --= oldScs
     phasesSet ++= newScs
@@ -80,32 +79,12 @@ class Plugin(val global: Global) extends NscPlugin {
 
     override val runsAfter = List("parser")
     val phaseName = "macroparadise"
+    override val description = "let our powers combine"
 
     override def newPhase(prev: Phase): StdPhase = new StdPhase(prev) {
       override def apply(unit: CompilationUnit) {
-        // do nothing else: everything's already hijacked
-        ensureInitialized()
-      }
-    }
-
-    var uninitialized = true
-    def ensureInitialized() = {
-      if (uninitialized) {
-        uninitialized = false
-        Plugin.this.analyzer.init()
+        // do nothing: everything's already hijacked
       }
     }
   }
-
-  override def processOptions(options: List[String], error: String => Unit) {
-    options foreach {
-      case "-Yquasiquote-debug" => Settings.Yquasiquotedebug.value = true
-      case option => error("Option not understood: " + option)
-    }
-  }
-
-  override val optionsHelp: Option[String] = Some("""
-    |  -P:macroparadise:
-    |      -Yquasiquote-debug     Trace quasiquote-related activities.
-  """.trim.stripMargin)
 }

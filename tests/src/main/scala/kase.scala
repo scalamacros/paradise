@@ -75,7 +75,7 @@ object kaseMacro {
       val primaryParams = primaryParamss.head
       val secondaryParamss = primaryParamss.tail
       val ourPolyType = if (tparams.nonEmpty) AppliedTypeTree(Ident(name), tparams.map(tparam => Ident(tparam.name))) else Ident(name)
-      val tparamUnderscores = tparams.zipWithIndex.map{ case (tdef, i) => TypeDef(makeDeferredSynthetic(unmakeParam(tdef.mods)), newTypeName("x$" + (i+1)), tdef.tparams, tdef.rhs) }
+      val tparamUnderscores = tparams.zipWithIndex.map{ case (tdef, i) => TypeDef(makeDeferredSynthetic(unmakeParam(tdef.mods)), TypeName("x$" + (i+1)), tdef.tparams, tdef.rhs) }
       val ourExistentialType = ExistentialTypeTree(AppliedTypeTree(Ident(name), tparamUnderscores.map(tdef => Ident(tdef.name))), tparamUnderscores)
 
       val kaseClass = {
@@ -92,7 +92,7 @@ object kaseMacro {
 
         // step 3: inject copy if not defined
         val cbody3 = {
-          if (cbody2.collect{ case ddef @ DefDef(_, name, _, _, _, _) if name == newTermName("copy") => ddef }.nonEmpty) cbody2
+          if (cbody2.collect{ case ddef @ DefDef(_, name, _, _, _, _) if name == TermName("copy") => ddef }.nonEmpty) cbody2
           else {
             val copyTparams = tparams
             val primaryCopyParamss = primaryParams.map(p => ValDef(makeDefault(unmakeCaseAccessor(p.mods)), p.name, p.tpt, Ident(p.name)))
@@ -100,59 +100,59 @@ object kaseMacro {
             val copyParamss = primaryCopyParamss :: secondaryCopyParamss
             val copyArgss = copyParamss.map(_.map(p => Ident(p.name)))
             val copyBody = ((Select(New(Ident(cdef.name)), nme.CONSTRUCTOR): Tree) /: copyArgss)((callee, args) => Apply(callee, args))
-            val copyMethod = DefDef(SyntheticMods, newTermName("copy"), copyTparams, copyParamss, TypeTree(), copyBody)
+            val copyMethod = DefDef(SyntheticMods, TermName("copy"), copyTparams, copyParamss, TypeTree(), copyBody)
             cbody2 :+ copyMethod
           }
         }
 
         // step 4: implement product
-        val cparents4 = cparents :+ Select(Ident(newTermName("scala")), newTypeName("Product")) :+ Select(Ident(newTermName("scala")), newTypeName("Serializable"))
+        val cparents4 = cparents :+ Select(Ident(TermName("scala")), TypeName("Product")) :+ Select(Ident(TermName("scala")), TypeName("Serializable"))
         val cbody4 = {
-          val productPrefixMethod = DefDef(OverrideSyntheticMods, newTermName("productPrefix"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
-          val productArityMethod = DefDef(SyntheticMods, newTermName("productArity"), Nil, Nil, TypeTree(), Literal(Constant(primaryParams.length)))
-          val productElementParam = ValDef(ParamMods, newTermName("x$1"), TypeTree(), EmptyTree)
+          val productPrefixMethod = DefDef(OverrideSyntheticMods, TermName("productPrefix"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
+          val productArityMethod = DefDef(SyntheticMods, TermName("productArity"), Nil, Nil, TypeTree(), Literal(Constant(primaryParams.length)))
+          val productElementParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
           def productElementByIndex(i: Int) = CaseDef(Literal(Constant(i)), EmptyTree, Select(This(name), primaryParams(i).name))
-          val productElementFallback = CaseDef(Ident(nme.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), nme.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), newTermName("toString")), List())))))
+          val productElementFallback = CaseDef(Ident(nme.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), nme.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), TermName("toString")), List())))))
           val productElementBody = Match(Ident(productElementParam.name), (0 until primaryParams.length map productElementByIndex toList) :+ productElementFallback)
-          val productElementMethod = DefDef(SyntheticMods, newTermName("productElement"), Nil, List(List(productElementParam )), TypeTree(), productElementBody)
-          val scalaRunTime = Select(Select(Ident(newTermName("scala")), newTermName("runtime")), newTermName("ScalaRunTime"))
-          val productIteratorBody = Apply(TypeApply(Select(scalaRunTime, newTermName("typedProductIterator")), List(Ident(newTypeName("Any")))), List(This(name)))
-          val productIteratorMethod = DefDef(OverrideSyntheticMods, newTermName("productIterator"), Nil, Nil, TypeTree(), productIteratorBody)
-          val canEqualParam = ValDef(ParamMods, newTermName("x$1"), TypeTree(), EmptyTree)
-          val canEqualBody = TypeApply(Select(Ident(canEqualParam.name), newTermName("isInstanceOf")), List(ourExistentialType))
-          val canEqualMethod = DefDef(SyntheticMods, newTermName("canEqual"), Nil, List(List(canEqualParam)), TypeTree(), canEqualBody)
+          val productElementMethod = DefDef(SyntheticMods, TermName("productElement"), Nil, List(List(productElementParam )), TypeTree(), productElementBody)
+          val scalaRunTime = Select(Select(Ident(TermName("scala")), TermName("runtime")), TermName("ScalaRunTime"))
+          val productIteratorBody = Apply(TypeApply(Select(scalaRunTime, TermName("typedProductIterator")), List(Ident(TypeName("Any")))), List(This(name)))
+          val productIteratorMethod = DefDef(OverrideSyntheticMods, TermName("productIterator"), Nil, Nil, TypeTree(), productIteratorBody)
+          val canEqualParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
+          val canEqualBody = TypeApply(Select(Ident(canEqualParam.name), TermName("isInstanceOf")), List(ourExistentialType))
+          val canEqualMethod = DefDef(SyntheticMods, TermName("canEqual"), Nil, List(List(canEqualParam)), TypeTree(), canEqualBody)
           cbody3 ++ List(productPrefixMethod, productArityMethod, productElementMethod, productIteratorMethod, canEqualMethod)
         }
 
         // step 5: inject hashcode
         val cbody5 = {
-          val scalaRunTime = Select(Select(Ident(newTermName("scala")), newTermName("runtime")), newTermName("ScalaRunTime"))
-          val hashcodeMethod = DefDef(OverrideSyntheticMods, newTermName("hashCode"), Nil, Nil, TypeTree(), Apply(Select(scalaRunTime, newTermName("_hashCode")), List(This(name))))
+          val scalaRunTime = Select(Select(Ident(TermName("scala")), TermName("runtime")), TermName("ScalaRunTime"))
+          val hashcodeMethod = DefDef(OverrideSyntheticMods, TermName("hashCode"), Nil, Nil, TypeTree(), Apply(Select(scalaRunTime, TermName("_hashCode")), List(This(name))))
           cbody4 :+ hashcodeMethod
         }
 
         // step 6: inject meaningful toString if not defined
         val cbody6 = {
-          if (cbody5.collect{ case ddef @ DefDef(_, name, _, _, _, _) if name == newTermName("toString") => ddef }.nonEmpty) cbody5
+          if (cbody5.collect{ case ddef @ DefDef(_, name, _, _, _, _) if name == TermName("toString") => ddef }.nonEmpty) cbody5
           else {
-            val scalaRunTime = Select(Select(Ident(newTermName("scala")), newTermName("runtime")), newTermName("ScalaRunTime"))
-            val toStringBody = Apply(Select(scalaRunTime, newTermName("_toString")), List(This(name)))
-            val toStringMethod = DefDef(OverrideSyntheticMods, newTermName("toString"), Nil, Nil, TypeTree(), toStringBody)
+            val scalaRunTime = Select(Select(Ident(TermName("scala")), TermName("runtime")), TermName("ScalaRunTime"))
+            val toStringBody = Apply(Select(scalaRunTime, TermName("_toString")), List(This(name)))
+            val toStringMethod = DefDef(OverrideSyntheticMods, TermName("toString"), Nil, Nil, TypeTree(), toStringBody)
             cbody5 :+ toStringMethod
           }
         }
 
         // step 7: inject equals
         val cbody7 = {
-          val equalsParam = ValDef(ParamMods, newTermName("x$1"), TypeTree(), EmptyTree)
+          val equalsParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
           val equalsBody = {
             def thisEqThat = {
-              val thatAnyRef = TypeApply(Select(Ident(equalsParam.name), newTermName("asInstanceOf")), List(Ident(newTypeName("Object"))))
-              Apply(Select(This(name), newTermName("eq")), List(thatAnyRef))
+              val thatAnyRef = TypeApply(Select(Ident(equalsParam.name), TermName("asInstanceOf")), List(Ident(TypeName("Object"))))
+              Apply(Select(This(name), TermName("eq")), List(thatAnyRef))
             }
             def thatCanEqualThis = {
-              val thatC = TypeApply(Select(Ident(equalsParam.name), newTermName("asInstanceOf")), List(ourPolyType))
-              Apply(Select(thatC, newTermName("canEqual")), List(This(name)))
+              val thatC = TypeApply(Select(Ident(equalsParam.name), TermName("asInstanceOf")), List(ourPolyType))
+              Apply(Select(thatC, TermName("canEqual")), List(This(name)))
             }
             def sameTypeCheck = {
               val ifSameType = CaseDef(Typed(Ident(nme.WILDCARD), ourPolyType), EmptyTree, Literal(Constant(true)))
@@ -160,21 +160,21 @@ object kaseMacro {
               Match(Ident(equalsParam.name), List(ifSameType, otherwise))
             }
             def sameFieldsCheck = {
-              val thatC = ValDef(SyntheticMods, newTermName(name.toString + "$1"), TypeTree(), TypeApply(Select(Ident(equalsParam.name), newTermName("asInstanceOf")), List(ourPolyType)))
-              val sameFieldsChecks = primaryParams.map(p => Apply(Select(Select(This(name), p.name), newTermName("==").encodedName), List(Select(Ident(thatC.name), p.name))))
-              val thatCanEqualThis = Apply(Select(Ident(thatC.name), newTermName("canEqual")), List(This(name)))
-              val sameFieldCheck = (sameFieldsChecks :+ thatCanEqualThis).reduceLeft((acc, check) => Apply(Select(acc, newTermName("&&").encodedName), List(check)))
+              val thatC = ValDef(SyntheticMods, TermName(name.toString + "$1"), TypeTree(), TypeApply(Select(Ident(equalsParam.name), TermName("asInstanceOf")), List(ourPolyType)))
+              val sameFieldsChecks = primaryParams.map(p => Apply(Select(Select(This(name), p.name), TermName("==").encodedName), List(Select(Ident(thatC.name), p.name))))
+              val thatCanEqualThis = Apply(Select(Ident(thatC.name), TermName("canEqual")), List(This(name)))
+              val sameFieldCheck = (sameFieldsChecks :+ thatCanEqualThis).reduceLeft((acc, check) => Apply(Select(acc, TermName("&&").encodedName), List(check)))
               Block(List(thatC), sameFieldCheck)
             }
             if (primaryParamss.isEmpty) {
               if (isFinal(cmods)) sameTypeCheck
-              else Apply(Select(sameTypeCheck, newTermName("&&").encodedName), List(thatCanEqualThis))
+              else Apply(Select(sameTypeCheck, TermName("&&").encodedName), List(thatCanEqualThis))
             } else {
-              val thisEqualsThat = Apply(Select(sameTypeCheck, newTermName("&&").encodedName), List(sameFieldsCheck))
-              Apply(Select(thisEqThat, newTermName("||").encodedName), List(thisEqualsThat))
+              val thisEqualsThat = Apply(Select(sameTypeCheck, TermName("&&").encodedName), List(sameFieldsCheck))
+              Apply(Select(thisEqThat, TermName("||").encodedName), List(thisEqualsThat))
             }
           }
-          val equalsMethod = DefDef(OverrideSyntheticMods, newTermName("equals"), Nil, List(List(equalsParam)), TypeTree(), equalsBody)
+          val equalsMethod = DefDef(OverrideSyntheticMods, TermName("equals"), Nil, List(List(equalsParam)), TypeTree(), equalsBody)
           cbody6 :+ equalsMethod
         }
 
@@ -184,7 +184,7 @@ object kaseMacro {
       val kaseModule = {
         val mdef @ ModuleDef(mmods, mname, Template(mparents, mself, mbody)) = annottees.tail.headOption getOrElse {
           val shouldInheritFromFun = !isAbstract(cdef.mods) && tparams.isEmpty && primaryParamss.length == 1
-          val funClass = Select(Select(Ident(newTermName("scala")), newTermName("runtime")), newTypeName("AbstractFunction" + primaryParams.length))
+          val funClass = Select(Select(Ident(TermName("scala")), TermName("runtime")), TypeName("AbstractFunction" + primaryParams.length))
           val funParent = AppliedTypeTree(funClass, primaryParams.map(_.tpt) :+ Ident(name))
           val parents = if (shouldInheritFromFun) List(funParent) else List(Ident(AnyRefClass))
           val emptyCtor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
@@ -193,10 +193,10 @@ object kaseMacro {
 
         // step 1: inject toString if not defined
         val mbody1 = {
-          if (mbody.collect{ case ddef @ DefDef(_, name, _, _, _, _) if name == newTermName("toString") => ddef }.nonEmpty) mbody
+          if (mbody.collect{ case ddef @ DefDef(_, name, _, _, _, _) if name == TermName("toString") => ddef }.nonEmpty) mbody
           else {
             val toStringBody = Literal(Constant(name.toString))
-            val toStringMethod = DefDef(FinalOverrideSyntheticMods, newTermName("toString"), Nil, Nil, TypeTree(), toStringBody)
+            val toStringMethod = DefDef(FinalOverrideSyntheticMods, TermName("toString"), Nil, Nil, TypeTree(), toStringBody)
             mbody :+ toStringMethod
           }
         }
@@ -207,22 +207,22 @@ object kaseMacro {
           val applyParamss = primaryParamss.map(_.map(p => ValDef(unmakeCaseAccessor(p.mods), p.name, p.tpt, p.rhs)))
           val applyArgss = applyParamss.map(_.map(p => Ident(p.name)))
           val applyBody = ((Select(New(ourPolyType), nme.CONSTRUCTOR): Tree) /: applyArgss)((callee, args) => Apply(callee, args))
-          val applyMethod = DefDef(SyntheticCaseMods, newTermName("apply"), applyTparams, applyParamss, TypeTree(), applyBody)
+          val applyMethod = DefDef(SyntheticCaseMods, TermName("apply"), applyTparams, applyParamss, TypeTree(), applyBody)
           mbody1 :+ applyMethod
         }
 
         // step 3: inject unapply
         val mbody3 = {
           val unapplyTparams = tparams.map(p => TypeDef(unmakeVariant(p.mods), p.name, p.tparams, p.rhs))
-          val unapplyParam = ValDef(ParamMods, newTermName("x$0"), ourPolyType, EmptyTree)
+          val unapplyParam = ValDef(ParamMods, TermName("x$0"), ourPolyType, EmptyTree)
           val unapplyName = primaryParams match {
-            case _ :+ AppliedTypeTree(tpt: RefTree, _) if tpt.name == newTypeName("<repeated>") => newTermName("unapplySeq")
-            case _ => newTermName("unapply")
+            case _ :+ AppliedTypeTree(tpt: RefTree, _) if tpt.name == TypeName("<repeated>") => TermName("unapplySeq")
+            case _ => TermName("unapply")
           }
           val unapplyBody = {
-            val none = Select(Ident(newTermName("scala")), newTermName("None"))
-            def some(xs: Tree*) = Apply(Select(Ident(newTermName("scala")), newTermName("Some")), xs.toList)
-            val thisEqNull = Apply(Select(Ident(unapplyParam.name), newTermName("==").encodedName), List(Literal(Constant(null))))
+            val none = Select(Ident(TermName("scala")), TermName("None"))
+            def some(xs: Tree*) = Apply(Select(Ident(TermName("scala")), TermName("Some")), xs.toList)
+            val thisEqNull = Apply(Select(Ident(unapplyParam.name), TermName("==").encodedName), List(Literal(Constant(null))))
             val failure = primaryParams match {
               case Nil => Literal(Constant(false))
               case _ => none
@@ -231,7 +231,7 @@ object kaseMacro {
               case Nil => Literal(Constant(true))
               case ps =>
                 val fs = ps.map(p => Select(Ident(unapplyParam.name), p.name))
-                val tuple = if (ps.length == 1) fs.head else Apply(Select(Ident(newTermName("scala")), newTermName("Tuple" + ps.length)), fs)
+                val tuple = if (ps.length == 1) fs.head else Apply(Select(Ident(TermName("scala")), TermName("Tuple" + ps.length)), fs)
                 some(tuple)
             }
             If(thisEqNull, failure, success)
@@ -258,33 +258,33 @@ object kaseMacro {
       val mods1 = makeCase(mods)
 
       // step 2: implement product
-      val parents2 = parents :+ Select(Ident(newTermName("scala")), newTypeName("Product")) :+ Select(Ident(newTermName("scala")), newTypeName("Serializable"))
+      val parents2 = parents :+ Select(Ident(TermName("scala")), TypeName("Product")) :+ Select(Ident(TermName("scala")), TypeName("Serializable"))
       val body2 = {
-        val productPrefixMethod = DefDef(OverrideSyntheticMods, newTermName("productPrefix"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
-        val productArityMethod = DefDef(SyntheticMods, newTermName("productArity"), Nil, Nil, TypeTree(), Literal(Constant(0)))
-        val productElementParam = ValDef(ParamMods, newTermName("x$1"), TypeTree(), EmptyTree)
-        val productElementBody = Match(Ident(productElementParam.name), List(CaseDef(Ident(nme.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), nme.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), newTermName("toString")), List())))))))
-        val productElementMethod = DefDef(SyntheticMods, newTermName("productElement"), Nil, List(List(productElementParam )), TypeTree(), productElementBody)
-        val scalaRunTime = Select(Select(Ident(newTermName("scala")), newTermName("runtime")), newTermName("ScalaRunTime"))
-        val productIteratorBody = Apply(TypeApply(Select(scalaRunTime, newTermName("typedProductIterator")), List(Ident(newTypeName("Any")))), List(This(name.toTypeName)))
-        val productIteratorMethod = DefDef(OverrideSyntheticMods, newTermName("productIterator"), Nil, Nil, TypeTree(), productIteratorBody)
-        val canEqualParam = ValDef(ParamMods, newTermName("x$1"), TypeTree(), EmptyTree)
-        val canEqualBody = TypeApply(Select(Ident(canEqualParam.name), newTermName("isInstanceOf")), List(SingletonTypeTree(Ident(name))))
-        val canEqualMethod = DefDef(SyntheticMods, newTermName("canEqual"), Nil, List(List(canEqualParam)), TypeTree(), canEqualBody)
+        val productPrefixMethod = DefDef(OverrideSyntheticMods, TermName("productPrefix"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
+        val productArityMethod = DefDef(SyntheticMods, TermName("productArity"), Nil, Nil, TypeTree(), Literal(Constant(0)))
+        val productElementParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
+        val productElementBody = Match(Ident(productElementParam.name), List(CaseDef(Ident(nme.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), nme.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), TermName("toString")), List())))))))
+        val productElementMethod = DefDef(SyntheticMods, TermName("productElement"), Nil, List(List(productElementParam )), TypeTree(), productElementBody)
+        val scalaRunTime = Select(Select(Ident(TermName("scala")), TermName("runtime")), TermName("ScalaRunTime"))
+        val productIteratorBody = Apply(TypeApply(Select(scalaRunTime, TermName("typedProductIterator")), List(Ident(TypeName("Any")))), List(This(name.toTypeName)))
+        val productIteratorMethod = DefDef(OverrideSyntheticMods, TermName("productIterator"), Nil, Nil, TypeTree(), productIteratorBody)
+        val canEqualParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
+        val canEqualBody = TypeApply(Select(Ident(canEqualParam.name), TermName("isInstanceOf")), List(SingletonTypeTree(Ident(name))))
+        val canEqualMethod = DefDef(SyntheticMods, TermName("canEqual"), Nil, List(List(canEqualParam)), TypeTree(), canEqualBody)
         body ++ List(productPrefixMethod, productArityMethod, productElementMethod, productIteratorMethod, canEqualMethod)
       }
 
       // step 3: inject hashcode
       val body3 = {
-        val hashcodeMethod = DefDef(OverrideSyntheticMods, newTermName("hashCode"), Nil, Nil, TypeTree(), Literal(Constant((name.decoded.hashCode))))
+        val hashcodeMethod = DefDef(OverrideSyntheticMods, TermName("hashCode"), Nil, Nil, TypeTree(), Literal(Constant((name.decoded.hashCode))))
         body2 :+ hashcodeMethod
       }
 
       // step 4: inject meaningful toString if not defined
       val body4 = {
-        if (body3.collect{ case ddef @ DefDef(_, name, _, _, _, _) if name == newTermName("toString") => ddef }.nonEmpty) body3
+        if (body3.collect{ case ddef @ DefDef(_, name, _, _, _, _) if name == TermName("toString") => ddef }.nonEmpty) body3
         else {
-          val toStringMethod = DefDef(OverrideSyntheticMods, newTermName("toString"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
+          val toStringMethod = DefDef(OverrideSyntheticMods, TermName("toString"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
           body3 :+ toStringMethod
         }
       }

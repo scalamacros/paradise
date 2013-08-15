@@ -9,7 +9,7 @@ object prettyMacro {
     val result = {
       annottees.map(_.tree).toList match {
         case ModuleDef(mods, name, Template(parents, self, body)) :: Nil =>
-          val toStringMethod = DefDef(Modifiers(OVERRIDE), newTermName("toString"), List(), List(List()), TypeTree(), Literal(Constant(name.toString)))
+          val toStringMethod = DefDef(Modifiers(OVERRIDE), TermName("toString"), List(), List(List()), TypeTree(), Literal(Constant(name.toString)))
           ModuleDef(mods, name, Template(parents, self, body :+ toStringMethod))
       }
     }

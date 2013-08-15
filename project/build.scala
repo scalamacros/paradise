@@ -3,7 +3,7 @@ import Keys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.10.2",
+    scalaVersion := "2.11.0-SNAPSHOT",
     crossVersion := CrossVersion.full,
     version := "2.0.0-SNAPSHOT",
     organization := "org.scala-lang.plugins",
@@ -135,8 +135,8 @@ object build extends Build {
   ) settings (
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
-    libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test",
-    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.10.1" % "test",
+    libraryDependencies += "org.scalatest" % "scalatest_2.11.0-M3" % "1.9.1b" % "test",
+    libraryDependencies += "org.scalacheck" % "scalacheck_2.11" % "1.10.2-SNAPSHOT" % "test",
     publishArtifact in Compile := false,
     unmanagedSourceDirectories in Test <<= (scalaSource in Test) { (root: File) =>
       // TODO: I haven't yet ported negative tests to SBT, so for now I'm excluding them

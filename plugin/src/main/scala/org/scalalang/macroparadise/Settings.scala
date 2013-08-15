@@ -16,6 +16,4 @@ object Settings {
       System.setProperty("macroparadise." + key, svalue)
     }
   )
-
-  def Yquasiquotedebug = boolSetting("quasiquote.debug")
 }
