@@ -14,8 +14,13 @@ object build extends Build {
     scalacOptions ++= Seq("-deprecation", "-feature"),
     parallelExecution in Test := false, // hello, reflection sync!!
     logBuffered := false,
-    // scalaHome := Some(file(System.getenv("SCALA_HOME")))
-    scalaHome := None
+    scalaHome := {
+      val scalaHome = System.getProperty("paradise.scala.home")
+      if (scalaHome != null) {
+        println(s"Going for custom scala home at $scalaHome")
+        Some(file(scalaHome))
+      } else None
+    }
   )
 
   def loadCredentials(): List[Credentials] = {
