@@ -317,7 +317,7 @@ object QuasiquoteCompat {
           if (body forall isInterfaceMember) List()
           else List(
             atPos(wrappingPos(superPos, lvdefs)) (
-              DefDef(NoMods, newTermName("$init$"), List(), List(List()), TypeTree(), u.Block(lvdefs, Literal(Constant())))))
+              DefDef(NoMods, newTermName("$init$"), List(), List(List()), TypeTree(), u.Block(lvdefs, Literal(Constant(()))))))
         } else {
           // convert (implicit ... ) to ()(implicit ... ) if its the only parameter section
           if (vparamss1.isEmpty || !vparamss1.head.isEmpty && vparamss1.head.head.mods.hasFlag(IMPLICIT))
@@ -326,7 +326,7 @@ object QuasiquoteCompat {
           val superCall = (superRef /: argss) (Apply.apply)
           List(
             atPos(wrappingPos(superPos, lvdefs ::: argss.flatten)) (
-              DefDef(constrMods, nme.CONSTRUCTOR, List(), vparamss1, TypeTree(), u.Block(lvdefs ::: List(superCall), Literal(Constant())))))
+              DefDef(constrMods, nme.CONSTRUCTOR, List(), vparamss1, TypeTree(), u.Block(lvdefs ::: List(superCall), Literal(Constant(()))))))
         }
       }
       constrs foreach (ensureNonOverlapping(_, parents ::: gvdefs, focus=false))
