@@ -100,6 +100,7 @@ class Plugin(val global: Global) extends NscPlugin {
   override def processOptions(options: List[String], error: String => Unit) {
     options foreach {
       case "-Yquasiquote-debug" => Settings.Yquasiquotedebug.value = true
+      case "-Ydebug" => Settings.Ydebug.value = true
       case option => error("Option not understood: " + option)
     }
   }
@@ -107,5 +108,6 @@ class Plugin(val global: Global) extends NscPlugin {
   override val optionsHelp: Option[String] = Some("""
     |  -P:macroparadise:
     |      -Yquasiquote-debug     Trace quasiquote-related activities.
+    |      -Ydebug                Trace other random things.
   """.trim.stripMargin)
 }

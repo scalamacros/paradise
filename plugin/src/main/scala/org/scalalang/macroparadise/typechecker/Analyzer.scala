@@ -32,9 +32,11 @@ trait Analyzer extends NscAnalyzer
       paradiseDefinitions.init()
       fastTrack.hijack()
     } else {
-      val part1 = "Macro paradise plugin couldn't initialize the quasiquoting module"
-      val part2 = "Lodge an issue at https://github.com/scalamacros/paradise/issues if this is a problem for you"
-      Console.err.println(s"$part1. $part2")
+      if (settings.Ydebug.value) {
+        val part1 = "Macro paradise plugin couldn't initialize the quasiquoting module (haveScalaReflect = $haveScalaReflect, compilingScalaReflect = $compilingScalaReflect)"
+        val part2 = "Lodge an issue at https://github.com/scalamacros/paradise/issues if this is a problem for you"
+        Console.err.println(s"$part1. $part2")
+      }
     }
   }
 }

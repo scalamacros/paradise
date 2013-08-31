@@ -18,4 +18,5 @@ object Settings {
   )
 
   def Yquasiquotedebug = boolSetting("quasiquote.debug")
+  def Ydebug = boolSetting("debug")
 }
