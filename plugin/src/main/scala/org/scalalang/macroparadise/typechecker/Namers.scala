@@ -484,6 +484,8 @@ trait Namers {
           val qual = probeMacroAnnotation(context, qualtree)
           val sym = if (canDefineMann(qual)) member(qual.tpe, name) else NoSymbol
           if (reallyExists(sym) && isAccessible(context, sym)) sym else NoSymbol
+        case AppliedTypeTree(tpt, _) => // https://github.com/scalamacros/paradise/issues/2: expand manns with type parameters
+          probeMacroAnnotation(context, tpt)
         case _ =>
           NoSymbol
       }
