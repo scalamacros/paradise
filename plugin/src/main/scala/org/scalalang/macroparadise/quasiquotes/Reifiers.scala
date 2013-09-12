@@ -195,21 +195,21 @@ trait Reifiers { self: Quasiquotes =>
     // NOTE: cannot add new constructors/extractors to scala.reflect.api.BuildUtils
     // because we're just a compiler plugin, not a fork of scalac
     // therefore we have to externalize the calls to new methods
-    def mirrorCompatCall(name: TermName, args: Tree*): Tree = {
-      if (isReifyingExpressions) Apply(Apply(Select(termPath(QuasiquoteCompatModule.fullName), name), List(universe)), args.toList)
+    def mirrorCompatCall(name: TermName, args: Tree*): Tree =
+      if (isReifyingExpressions)
+        Apply(Select(Apply(Select(termPath(QuasiquoteCompatModule.fullName), nme.apply), List(universe)), name), args.toList)
       else {
         // NOTE: density of workarounds per line of code is rapidly ramping up!
         // here we force the compiler into supporting path-dependent extractors
         // by manually applying the first argument list, i.e. the one that contains the universe,
         // and then setting the type of the resulting Apply node so that the typechecker doesn't touch it later
-        // if we didn't set the type, then typedApply for the first arglist would get confused and fail
-        val sortOfExtractor = QuasiquoteCompatModule.moduleClass.info.decl(name)
-        val applySym = sortOfExtractor.info.decl(nme.apply)
-        val apply = gen.mkAttributedRef(sortOfExtractor.tpe, applySym)
-        val extractor = Apply(apply, List(universe)) setType apply.tpe.resultType(List(universe.tpe))
-        Apply(extractor, args.toList)
+        // if we didn't set the type, then typedApply for the first arglist would get confused and fai
+        val compatModule = QuasiquoteCompatModule.moduleClass
+        val compatApply = compatModule.info.decl(nme.apply)
+        val apply = gen.mkAttributedRef(compatModule.tpe, compatApply)
+        val compatInstance = Apply(apply, List(universe)) setType apply.tpe.resultType(List(universe.tpe))
+        Apply(Select(compatInstance, name), args.toList)
       }
-    }
 
     def reifyCompatCall(name: TermName, args: Any*) =
       mirrorCompatCall(name, args map reify: _*)

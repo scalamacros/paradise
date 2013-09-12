@@ -80,7 +80,7 @@ trait Definitions {
     }
 
     final val QuasiquoteCompatBase = "scala.reflect.api.QuasiquoteCompat"
-    final val QuasiquoteCompatVersion = "V1"
+    final val QuasiquoteCompatVersion = "V2"
     lazy val QuasiquoteCompatModule = ensureEmbedded(newTermName(QuasiquoteCompatBase + QuasiquoteCompatVersion), "/QuasiquoteCompat.scala")
 
     // Liftable isn't versioned at the moment, because it's a part of the public API that should be compatible with 2.11.
