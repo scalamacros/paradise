@@ -88,7 +88,7 @@ trait Typers {
       val unapply = unapplyMember(fun.tpe)
       if (QuasiquoteMacros.contains(unapply)) {
         val expandee = treeCopy.Apply(tree, gen.mkAttributedSelect(fun, unapply), args)
-        val expanded = duplicateAndKeepPositions(atPos(tree.pos)(expandUntyped(this, expandee).getOrElse(tree)))
+        val expanded = duplicateAndKeepPositions(atPos(tree.pos)(expandUntyped(this, expandee).getOrElse(infer.setError(tree))))
         typed(expanded, mode, pt)
       } else {
         super.doTypedUnapply(tree, fun0, fun, args, mode, pt)

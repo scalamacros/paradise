@@ -32,7 +32,7 @@ trait Macros {
     }
 
     try {
-      if (expandee.symbol.isErroneous) return None
+      if (expandee.symbol.isErroneous || (expandee exists (_.isErroneous))) return None
       val runtime = macroRuntime(expandee.symbol)
       assert(runtime != null, expandee)
       macroExpandWithRuntime(typer, expandee, runtime)
