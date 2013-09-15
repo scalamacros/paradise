@@ -7,7 +7,7 @@ package api
 // NOTE: please note that dependently-typed extractors used here won't normally work
 // it all pans out because Reifiers.mirrorCompatCall applies some hackery to persuade scalac
 
-object QuasiquoteCompat {
+object QuasiquoteCompatV1 {
 
   // ==================== NEW APIS INTRODUCED IN UNIVERSE ====================
 

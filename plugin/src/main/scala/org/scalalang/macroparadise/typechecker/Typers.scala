@@ -106,7 +106,7 @@ trait Typers {
         // quant.tpe raw = TypeRef(NoPrefix, newTypeName("_50.type"), List())
         // quant.info pretty = <: scala.reflect.api.QuasiquoteCompat.AppliedExtractor{val u: reflect.runtime.universe.type} with Singleton
         // quant.info raw = TypeBounds(TypeRef(ThisType(scala), scala.Nothing, List()), RefinedType(List(RefinedType(List(TypeRef(ThisType(scala.reflect.api.QuasiquoteCompat), scala.reflect.api.QuasiquoteCompat.AppliedExtractor, List())), Scope(newTermName("u"))), TypeRef(ThisType(scala), scala.Singleton, List())), Scope()))
-        quant.info.exists(_.typeSymbol.sourceModule.rawname == newTermName("QuasiquoteCompat"))
+        quant.info.exists(_.typeSymbol.sourceModule.rawname.startsWith("QuasiquoteCompat"))
       }
       tpe match {
         case extp @ ExistentialType(quants, underlying) if !extp.isRepresentableWithWildcards && quants.exists(shouldSuppress) => ()
