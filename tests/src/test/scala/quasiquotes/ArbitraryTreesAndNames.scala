@@ -92,7 +92,7 @@ trait ArbitraryTreesAndNames {
       yield CompoundTypeTree(templ)
 
   def genDefDef(size: Int) =
-    for(mods <- genModifiers; name <- genName;
+    for(mods <- genModifiers; name <- genTermName;
         tpt <- genTree(size -1); rhs <- genTree(size - 1);
         tparams <- smallList(size, genTypeDef(size - 1));
         vparamss <- smallList(size, smallList(size, genValDef(size - 1))))
@@ -258,7 +258,7 @@ trait ArbitraryTreesAndNames {
 
   /*  These are marker types that allow to write tests that
    *  depend specificly on Trees that are terms or types.
-   *  They are transparently tranformed to trees through
+   *  They are transperantly tranformed to trees through
    *  implicit conversions and liftables for quasiquotes.
    */
 
