@@ -188,7 +188,7 @@ object kaseMacro {
           val funParent = AppliedTypeTree(funClass, primaryParams.map(_.tpt) :+ Ident(name))
           val parents = if (shouldInheritFromFun) List(funParent) else List(Ident(AnyRefClass))
           val emptyCtor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
-          ModuleDef(SyntheticMods, name.toTermName, Template(parents, emptyValDef, List(emptyCtor)))
+          ModuleDef(SyntheticMods, name.toTermName, Template(parents, noSelfType, List(emptyCtor)))
         }
 
         // step 1: inject toString if not defined
