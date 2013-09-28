@@ -632,7 +632,7 @@ trait Namers {
     def weakEnsureCompanionObject(cdef: ClassDef, creator: ClassDef => Tree = companionModuleDef(_)): Symbol = {
       val m = companionSymbolOf(cdef.symbol, context)
       if (m != NoSymbol && currentRun.compiles(m)) m
-      else markWeak(enterSyntheticSym(atPos(cdef.pos.focus)(creator(cdef))))
+      else { val mdef = atPos(cdef.pos.focus)(creator(cdef)); enterSym(mdef); markWeak(mdef.symbol) }
     }
 
     /** =================== COPY/PASTE ===================
