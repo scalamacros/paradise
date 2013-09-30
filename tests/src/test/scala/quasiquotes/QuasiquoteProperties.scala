@@ -65,7 +65,9 @@ trait Helpers {
   def assertEqAst(tree: Tree, code: Tree) = assert(eqAst(tree, code))
   def eqAst(tree: Tree, code: Tree) = tree ≈ code
 
-  val toolbox = currentMirror.mkToolBox()
+  val plugin = System.getProperty("macroparadise.plugin.jar")
+  assert(plugin != null)
+  val toolbox = rootMirror.mkToolBox(options = "-Xplugin:" + plugin)
   val parse = toolbox.parse(_)
   val compile = toolbox.compile(_)
   val eval = toolbox.eval(_)
