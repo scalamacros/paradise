@@ -98,16 +98,8 @@ trait Typers {
     // suppress existential warnings for our dependently-typed quasiquote extractors
     // see QuasiquoteCompat.scala for more information for details
     override def checkExistentialsFeature(pos: Position, tpe: Type, prefix: String): Unit = {
-      def shouldSuppress(quant: Symbol) = {
-        // some debug output
-        // extp pretty = List[_50.u.Tree] forSome { val _50: scala.reflect.api.QuasiquoteCompat.AppliedExtractor{val u: reflect.runtime.universe.type} }
-        // extp raw = ExistentialType(List(newTypeName("_50.type")), TypeRef(ThisType(scala.collection.immutable), scala.collection.immutable.List, List(TypeRef(SingleType(TypeRef(NoPrefix, newTypeName("_50.type"), List()), newTermName("u")), newTypeName("Tree"), List()))))
-        // quant.tpe pretty = _50.type
-        // quant.tpe raw = TypeRef(NoPrefix, newTypeName("_50.type"), List())
-        // quant.info pretty = <: scala.reflect.api.QuasiquoteCompat.AppliedExtractor{val u: reflect.runtime.universe.type} with Singleton
-        // quant.info raw = TypeBounds(TypeRef(ThisType(scala), scala.Nothing, List()), RefinedType(List(RefinedType(List(TypeRef(ThisType(scala.reflect.api.QuasiquoteCompat), scala.reflect.api.QuasiquoteCompat.AppliedExtractor, List())), Scope(newTermName("u"))), TypeRef(ThisType(scala), scala.Singleton, List())), Scope()))
-        quant.info.exists(_.typeSymbol.sourceModule.rawname.startsWith("QuasiquoteCompat"))
-      }
+      def shouldSuppress(quant: Symbol) =
+        quant.info.exists { _.typeSymbol.rawname.startsWith("QuasiquoteCompat") }
       tpe match {
         case extp @ ExistentialType(quants, underlying) if !extp.isRepresentableWithWildcards && quants.exists(shouldSuppress) => ()
         case _ => super.checkExistentialsFeature(pos, tpe, prefix)

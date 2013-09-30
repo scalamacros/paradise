@@ -4,119 +4,278 @@ package api
 // QuasiquoteCompat is sort of semi-synthetic
 // therefore also keep an eye on reflect/Definitions.scala where it's materialized
 
-// NOTE: please note that dependently-typed extractors used here won't normally work
-// it all pans out because Reifiers.mirrorCompatCall applies some hackery to persuade scalac
-
-object QuasiquoteCompatV1 {
+object QuasiquoteCompatV2 { def apply(u0: Universe): QuasiquoteCompatV2 { val u: u0.type } = new { val u: u0.type = u0 } with QuasiquoteCompatV2 }
+trait QuasiquoteCompatV2 {
+  val u: Universe
+  import u._, definitions._, Flag._
 
   // ==================== NEW APIS INTRODUCED IN UNIVERSE ====================
 
-  object TermName { def apply(u0: Universe): TermNameExtractor { val u: u0.type } = new { val u: u0.type = u0 } with TermNameExtractor }
-  trait TermNameExtractor extends Cake {
-    import u._
+  object TermName {
     def apply(s: String): TermName = newTermName(s)
     def unapply(name: TermName): Some[String] = Some(name.toString)
   }
 
-  object TypeName { def apply(u0: Universe): TypeNameExtractor { val u: u0.type } = new { val u: u0.type = u0 } with TypeNameExtractor }
-  trait TypeNameExtractor extends Cake {
-    import u._
+  object TypeName {
     def apply(s: String): TypeName = newTypeName(s)
     def unapply(name: TypeName): Some[String] = Some(name.toString)
   }
 
-  object Modifiers { def apply(u0: Universe): ModifiersExtractor { val u: u0.type } = new { val u: u0.type = u0 } with ModifiersExtractor }
-  trait ModifiersExtractor extends Cake {
-    import u._
-    def apply(flags: FlagSet, privateWithin: Name, annotations: List[Tree]): Modifiers =
+  object Modifiers {
+    def apply(flags: FlagSet, privateWithin: Name = TermName(""), annotations: List[Tree] = Nil): Modifiers =
       u.Modifiers(flags, privateWithin, annotations)
     def unapply(mods: Modifiers): Some[(FlagSet, Name, List[Tree])] =
       Some((mods.flags, mods.privateWithin, mods.annotations))
   }
 
-  object EmptyValDefLike { def apply(u0: Universe): EmptyValDefLikeExtractor { val u: u0.type } = new { val u: u0.type = u0 } with EmptyValDefLikeExtractor }
-  trait EmptyValDefLikeExtractor extends Cake {
-    import u._
+  object EmptyValDefLike {
     def unapply(tree: Tree): Boolean = tree eq emptyValDef
   }
 
   // ==================== NEW APIS INTRODUCED IN BUILDUTILS ====================
 
-  def Block(u: Universe)(stats: List[u.Tree]): u.Block = {
-    import u._
-    stats match {
-      case Nil => u.Block(Nil, Literal(Constant(())))
-      case elem :: Nil => u.Block(Nil, elem)
-      case elems => u.Block(elems.init, elems.last)
+  object RefTree {
+    def apply(qualifier: Tree, name: Name): RefTree = qualifier match {
+      case EmptyTree =>
+        Ident(name)
+      case qual if qual.isTerm =>
+        Select(qual, name)
+      case qual if qual.isType =>
+        assert(name.isTypeName, s"qual = $qual, name = $name")
+        SelectFromTypeTree(qual, name.toTypeName)
+    }
+    def apply(qual: Tree, sym: Symbol): Tree = apply(qual, sym.name).setSymbol(sym)
+    def unapply(refTree: RefTree): Option[(Tree, Name)] = Some((refTree.qualifier, refTree.name))
+  }
+
+  def mkAnnotation(tree: Tree): Tree = tree match {
+    case SyntacticNew(Nil, SyntacticApplied(SyntacticTypeApplied(_, _), _) :: Nil, emptyValDef, Nil) =>
+      tree
+    case _ =>
+      throw new IllegalArgumentException(s"Tree ${showRaw(tree)} isn't a correct representation of annotation." +
+                                          """Consider reformatting it into a q"new $name[..$targs](...$argss)" shape""")
+  }
+
+  def mkAnnotation(trees: List[Tree]): List[Tree] = trees.map(mkAnnotation)
+
+  def mkVparamss(argss: List[List[ValDef]]): List[List[ValDef]] = argss.map(_.map(mkParam))
+
+  def mkParam(vd: ValDef): ValDef = {
+    var newmods = (vd.mods | PARAM) & (~DEFERRED)
+    if (vd.rhs.nonEmpty) newmods |= DEFAULTPARAM
+    copyValDef(vd)(mods = newmods)
+  }
+
+  def mkTparams(tparams: List[Tree]): List[TypeDef] =
+    tparams.map {
+      case td: TypeDef => copyTypeDef(td)(mods = (td.mods | PARAM) & (~DEFERRED))
+      case other => throw new IllegalArgumentException("can't splice $other as type parameter")
+    }
+
+  def mkRefineStat(stat: Tree): Tree = {
+    stat match {
+      case dd: DefDef => require(dd.rhs.isEmpty, "can't use DefDef with non-empty body as refine stat")
+      case vd: ValDef => require(vd.rhs.isEmpty, "can't use ValDef with non-empty rhs as refine stat")
+      case td: TypeDef =>
+      case _ => throw new IllegalArgumentException(s"not legal refine stat: $stat")
+    }
+    stat
+  }
+
+  def mkRefineStat(stats: List[Tree]): List[Tree] = stats.map(mkRefineStat)
+
+  object ScalaDot {
+    def apply(name: Name): Tree = gen.scalaDot(name)
+    def unapply(tree: Tree): Option[Name] = tree match {
+      case Select(id @ Ident(SCALA), name) if id.symbol == ScalaPackage => Some(name)
+      case _ => None
     }
   }
 
-  def mkAnnotationCtor(u: Universe)(tree: u.Tree, args: List[u.Tree]): u.Tree = {
-    import u._
-    tree match {
-      case ident: Ident =>
-        Apply(Select(New(ident), nme.CONSTRUCTOR: TermName), args)
-      case call @ Apply(Select(New(ident: Ident), nme.CONSTRUCTOR), _) =>
-        if (args.nonEmpty)
-          throw new IllegalArgumentException("Can't splice annotation that already contains args with extra args, consider merging these lists together")
-        call
-      case _ =>
-        throw new IllegalArgumentException(s"Tree ${showRaw(tree)} isn't a correct representation of annotation, consider passing Ident as a first argument")
-    }
+  def mkEarlyDef(defn: Tree): Tree = defn match {
+    case vdef @ ValDef(mods, _, _, _) if !mods.hasFlag(DEFERRED) =>
+      copyValDef(vdef)(mods = mods | PRESUPER)
+    case tdef @ TypeDef(mods, _, _, _) =>
+      copyTypeDef(tdef)(mods =  mods | PRESUPER)
+    case _ =>
+      throw new IllegalArgumentException(s"not legal early def: $defn")
   }
 
-  object FlagsAsBits { def apply(u0: Universe): FlagsAsBitsExtractor { val u: u0.type } = new { val u: u0.type = u0 } with FlagsAsBitsExtractor }
-  trait FlagsAsBitsExtractor extends Cake {
+  def mkEarlyDef(defns: List[Tree]): List[Tree] = defns.map(mkEarlyDef)
+
+  object FlagsRepr {
+    def apply(bits: Long): FlagSet = bits.asInstanceOf[FlagSet]
     def unapply(flags: Long): Some[Long] = Some(flags)
   }
 
-  object TypeApplied { def apply(u0: Universe): TypeAppliedExtractor { val u: u0.type } = new { val u: u0.type = u0 } with TypeAppliedExtractor }
-  trait TypeAppliedExtractor extends Cake {
-    import u._
+  object SyntacticTypeApplied {
+    def apply(tree: Tree, targs: List[Tree]): Tree =
+      if (targs.isEmpty) tree
+      else if (tree.isTerm) TypeApply(tree, targs)
+      else if (tree.isType) AppliedTypeTree(tree, targs)
+      else throw new IllegalArgumentException(s"can't apply types to $tree")
+
     def unapply(tree: Tree): Some[(Tree, List[Tree])] = tree match {
       case TypeApply(fun, targs) => Some((fun, targs))
+      case AppliedTypeTree(tpe, targs) => Some((tpe, targs))
       case _ => Some((tree, Nil))
     }
   }
 
-  object Applied { def apply(u0: Universe): AppliedExtractor { val u: u0.type } = new { val u: u0.type = u0 } with AppliedExtractor }
-  trait AppliedExtractor extends Cake{
-    import u._
+  object SyntacticApplied {
+    def apply(tree: Tree, argss: List[List[Tree]]): Tree =
+      argss.foldLeft(tree) { Apply(_, _) }
+
     def unapply(tree: Tree): Some[(Tree, List[List[Tree]])] = {
-      val Applied(fun, targs, argss) = tree
-      targs match {
-        case Nil => Some((fun, argss))
-        case _ => Some((TypeApply(fun, targs), argss))
+      val treeInfo.Applied(fun, targs, argss) = tree
+      Some((SyntacticTypeApplied(fun, targs), argss))
+    }
+  }
+
+  private object UnCtor {
+    def unapply(tree: Tree): Option[(Modifiers, List[List[ValDef]], List[List[Tree]], List[Tree])] = tree match {
+      case DefDef(mods, MIXIN_CONSTRUCTOR, _, _, _, Block(lvdefs, _)) =>
+        Some((mods | Flag.TRAIT, Nil, Nil, lvdefs))
+      case DefDef(mods, nme.CONSTRUCTOR, Nil, vparamss, _, Block(lvdefs :+ SyntacticApplied(_, argss), _)) =>
+        Some((mods, vparamss, argss, lvdefs))
+      case _ => None
+    }
+  }
+
+  private object UnMkTemplate {
+    def unapply(templ: Template): Option[(List[Tree], ValDef, Modifiers, List[List[ValDef]], List[Tree], List[Tree])] = {
+      val Template(parents0, selfdef, tbody) = templ
+      def result(ctorMods: Modifiers, vparamss: List[List[ValDef]], edefs: List[Tree], parents: List[Tree], body: List[Tree]) =
+        Some((parents, selfdef, ctorMods, vparamss, edefs, body))
+      def indexOfCtor(trees: List[Tree]) =
+        trees.indexWhere { case UnCtor(_, _, _, _) => true ; case _ => false }
+
+      if (tbody forall treeInfo.isInterfaceMember)
+        result(NoMods | Flag.TRAIT, Nil, Nil, parents0, tbody)
+      else if (indexOfCtor(tbody) == -1)
+        None
+      else {
+        val (rawEdefs, rest) = tbody.span(treeInfo.isEarlyDef)
+        val (gvdefs, etdefs) = rawEdefs.partition(treeInfo.isEarlyValDef)
+        val (fieldDefs, UnCtor(ctorMods, ctorVparamss, argss, lvdefs) :: body) = rest.splitAt(indexOfCtor(rest))
+        val parents = {
+          val head :: tail = parents0
+          if (argss == List(Nil)) parents0
+          else SyntacticApplied(head, argss) :: tail
+        }
+        val evdefs = gvdefs.zip(lvdefs).map {
+          case (gvdef @ ValDef(_, _, tpt: TypeTree, _), ValDef(_, _, _, rhs)) =>
+            copyValDef(gvdef)(tpt = tpt.original, rhs = rhs)
+          case (gvdef @ ValDef(_, _, tpt, _), ValDef(_, _, _, rhs)) =>
+            copyValDef(gvdef)(tpt = tpt, rhs = rhs)
+        }
+        val edefs = evdefs ::: etdefs
+        if (ctorMods.hasFlag(TRAIT))
+          result(ctorMods, Nil, edefs, parents, body)
+        else {
+          // undo conversion from (implicit ... ) to ()(implicit ... ) when its the only parameter section
+          val vparamssRestoredImplicits = ctorVparamss match {
+            case Nil :: (tail @ ((head :: _) :: _)) if head.mods.hasFlag(IMPLICIT) => tail
+            case other => other
+          }
+          // undo flag modifications by mergeing flag info from constructor args and fieldDefs
+          val modsMap = fieldDefs.map { case ValDef(mods, name, _, _) => name -> mods }.toMap
+          val vparamss = vparamssRestoredImplicits.map { _.map { vd =>
+            val originalMods = modsMap(vd.name) | (vd.mods.flags & DEFAULTPARAM)
+            atPos(vd.pos)(ValDef(originalMods, vd.name, vd.tpt, vd.rhs))
+          } }
+          result(ctorMods, vparamss, edefs, parents, body)
+        }
       }
     }
   }
 
-  object SyntacticClassDef { def apply(u0: Universe): SyntacticClassDefExtractor { val u: u0.type } = new { val u: u0.type = u0 } with SyntacticClassDefExtractor }
-  trait SyntacticClassDefExtractor extends Cake {
-    import u._
-
-    def apply(
-        mods: Modifiers, name: TypeName, tparams: List[TypeDef],
-        constrMods: Modifiers, vparamss: List[List[ValDef]],
-        parents: List[Tree], argss: List[List[Tree]],
-        selfdef: ValDef, body: List[Tree]): Tree = {
-      SyntacticClassDef.apply(mods, name, tparams, constrMods, vparamss, parents, argss, selfdef, body)
+  object SyntacticClassDef {
+    def apply(mods: Modifiers, name: TypeName, tparams: List[TypeDef],
+              constrMods: Modifiers, vparamss: List[List[ValDef]], earlyDefs: List[Tree],
+              parents: List[Tree], selfdef: ValDef, body: List[Tree]): ClassDef = {
+      val extraFlags = PARAMACCESSOR | (if (mods.hasFlag(CASE)) CASEACCESSOR else NoFlags)
+      val vparamss0 = vparamss.map { _.map { vd => copyValDef(vd)(mods = (vd.mods | extraFlags) & (~DEFERRED)) } }
+      val tparams0 = mkTparams(tparams)
+      val parents0 = gen.mkParents(mods,
+        if (mods.hasFlag(CASE)) parents.filter {
+          case ScalaDot(PRODUCT | SERIALIZABLE | ANYREF) => false
+          case _ => true
+        } else parents
+      )
+      val body0 = earlyDefs ::: body
+      val templ = gen.mkTemplate(parents0, selfdef, constrMods, vparamss0, body0)
+      gen.mkClassDef(mods, name, tparams0, templ)
     }
 
-    def unapply(tree: Tree): Option[(
-        Modifiers, TypeName, List[TypeDef],
-        Modifiers, List[List[ValDef]],
-        List[Tree], List[List[Tree]],
-        ValDef, List[Tree])] = {
-      SyntacticClassDef.unapply(tree)
+    def unapply(tree: Tree): Option[(Modifiers, TypeName, List[TypeDef], Modifiers, List[List[ValDef]],
+                                     List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
+      case ClassDef(mods, name, tparams, UnMkTemplate(parents, selfdef, ctorMods, vparamss, earlyDefs, body))
+        if !ctorMods.hasFlag(TRAIT) && !ctorMods.hasFlag(JAVA) =>
+        Some((mods, name, tparams, ctorMods, vparamss, earlyDefs, parents, selfdef, body))
+      case _ =>
+        None
     }
   }
 
-  object TupleN { def apply(u0: Universe): TupleNExtractor { val u: u0.type } = new { val u: u0.type = u0 } with TupleNExtractor }
-  trait TupleNExtractor extends Cake {
-    import u._
-    import definitions._
+  object SyntacticTraitDef {
+    def apply(mods: Modifiers, name: TypeName, tparams: List[TypeDef], earlyDefs: List[Tree],
+              parents: List[Tree], selfdef: ValDef, body: List[Tree]): ClassDef = {
+      val mods0 = mods | TRAIT | ABSTRACT
+      val templ = gen.mkTemplate(parents, selfdef, Modifiers(TRAIT), Nil, earlyDefs ::: body)
+      gen.mkClassDef(mods0, name, mkTparams(tparams), templ)
+    }
 
+    def unapply(tree: Tree): Option[(Modifiers, TypeName, List[TypeDef],
+                                     List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
+      case ClassDef(mods, name, tparams, UnMkTemplate(parents, selfdef, ctorMods, vparamss, earlyDefs, body))
+        if mods.hasFlag(TRAIT) =>
+        Some((mods, name, tparams, earlyDefs, parents, selfdef, body))
+      case _ => None
+    }
+  }
+
+  object SyntacticModuleDef {
+    def apply(mods: Modifiers, name: TermName, earlyDefs: List[Tree],
+              parents: List[Tree], selfdef: ValDef, body: List[Tree]) =
+      ModuleDef(mods, name, gen.mkTemplate(parents, selfdef, NoMods, Nil, earlyDefs ::: body))
+
+    def unapply(tree: Tree): Option[(Modifiers, TermName, List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
+      case ModuleDef(mods, name, UnMkTemplate(parents, selfdef, _, _, earlyDefs, body)) =>
+        Some((mods, name, earlyDefs, parents, selfdef, body))
+      case _ =>
+        None
+    }
+  }
+
+  private trait ScalaMemberRef {
+    val symbols: Seq[Symbol]
+    def result(name: Name): Option[Symbol] =
+      symbols.collect { case sym if sym.name == name => sym }.headOption
+    def unapply(tree: Tree): Option[Symbol] = tree match {
+      case id @ Ident(name) if symbols.contains(id.symbol) && name == id.symbol.name =>
+        Some(id.symbol)
+      case Select(scalapkg @ Ident(SCALA), name) if scalapkg.symbol == ScalaPackage =>
+        result(name)
+      case Select(Select(Ident(nme.ROOTPKG), SCALA), name) =>
+        result(name)
+      case _ => None
+    }
+  }
+  private object TupleClassRef extends ScalaMemberRef {
+    val symbols = TupleClass.filter { _ != null }.toSeq
+  }
+  private object TupleCompanionRef extends ScalaMemberRef {
+    val symbols = TupleClassRef.symbols.map { _.companionModule }
+  }
+  private object UnitClassRef extends ScalaMemberRef {
+    val symbols = Seq(UnitClass)
+  }
+  private object FunctionClassRef extends ScalaMemberRef {
+    val symbols = FunctionClass.toSeq
+  }
+
+  object SyntacticTuple {
     def apply(args: List[Tree]): Tree = args match {
       case Nil      => Literal(Constant(()))
       case _        =>
@@ -127,66 +286,129 @@ object QuasiquoteCompatV1 {
     def unapply(tree: Tree): Option[List[Tree]] = tree match {
       case Literal(Constant(())) =>
         Some(Nil)
-      case Apply(id: Ident, args)
-        if args.length <= MaxTupleArity && id.symbol == TupleClass(args.length).companionModule =>
-        Some(args)
-      case Apply(Select(Ident(pkg), tuple), args)
-        if args.length <= MaxTupleArity && tuple == TupleClass(args.length).name && pkg == newTermName("scala") =>
+      case Apply(TupleCompanionRef(sym), args)
+        if args.length <= MaxTupleArity
+        && sym == TupleClass(args.length).companionModule =>
         Some(args)
       case _ =>
         None
     }
   }
 
-  object TupleTypeN { def apply(u0: Universe): TupleTypeNExtractor { val u: u0.type } = new { val u: u0.type = u0 } with TupleTypeNExtractor }
-  trait TupleTypeNExtractor extends Cake {
-    import u._
-    import definitions._
-
+  object SyntacticTupleType {
     def apply(args: List[Tree]): Tree = args match {
-      case Nil => Select(Ident(newTermName("scala")), newTypeName("Unit"))
+      case Nil => u.Select(u.Ident(SCALA), UNIT)
       case _   =>
         require(args.length <= MaxTupleArity, s"Tuples with arity bigger than $MaxTupleArity aren't supported")
         AppliedTypeTree(Ident(TupleClass(args.length)), args)
     }
 
-    def unapply(tree: Tree): Option[List[Tree]] = tree match {
-      case Select(Ident(pkg), unit)
-        if pkg == newTermName("scala") && unit == newTypeName("Unit") =>
+    def unapply(tree: Tree): Option[List[Tree]] =  tree match {
+      case UnitClassRef(_) =>
         Some(Nil)
-      case AppliedTypeTree(id: Ident, args)
-        if args.length <= MaxTupleArity && id.symbol == TupleClass(args.length) =>
-        Some(args)
-      case AppliedTypeTree(Select(id @ Ident(_), tuple), args)
-        if args.length <= MaxTupleArity && id.symbol == ScalaPackage && tuple == TupleClass(args.length).name =>
+      case AppliedTypeTree(TupleClassRef(sym), args)
+        if args.length <= MaxTupleArity && sym == TupleClass(args.length) =>
         Some(args)
       case _ =>
         None
     }
   }
 
-  def RefTree(u: Universe)(qual: u.Tree, sym: u.Symbol): u.Tree = {
-    import u._
-    val name = sym.name
-    val result = qual match {
-      case EmptyTree =>
-        Ident(name)
-      case qual if qual.isTerm =>
-        Select(qual, name)
-      case qual if qual.isType =>
-        assert(name.isTypeName, s"qual = $qual, name = $name")
-        SelectFromTypeTree(qual, name.toTypeName)
+  object SyntacticFunctionType {
+    def apply(argtpes: List[Tree], restpe: Tree): Tree = {
+      require(argtpes.length <= MaxFunctionArity + 1, s"Function types with arity bigger than $MaxFunctionArity aren't supported")
+      gen.mkFunctionTypeTree(argtpes, restpe)
     }
-    build.setSymbol(result, sym)
+
+    def unapply(tree: Tree): Option[(List[Tree], Tree)] = tree match {
+      case AppliedTypeTree(FunctionClassRef(sym), args @ (argtpes :+ restpe))
+        if args.length - 1 <= MaxFunctionArity && sym == FunctionClass(args.length - 1) =>
+        Some((argtpes, restpe))
+      case _ => None
+    }
+  }
+
+  object SyntacticBlock {
+    def apply(stats: List[Tree]): Tree = gen.mkBlock(stats)
+
+    def unapply(tree: Tree): Option[List[Tree]] = tree match {
+      case u.Block(stats, expr) => Some(stats :+ expr)
+      case _ if tree.isTerm => Some(tree :: Nil)
+      case _ => None
+    }
+  }
+
+  object SyntacticFunction {
+    def apply(params: List[ValDef], body: Tree): Tree = {
+      val params0 = params.map { arg =>
+        require(arg.rhs.isEmpty, "anonymous functions don't support default values")
+        mkParam(arg)
+      }
+      Function(params0, body)
+    }
+
+    def unapply(tree: Tree): Option[(List[ValDef], Tree)] = tree match {
+      case Function(params, body) => Some((params, body))
+      case _ => None
+    }
+  }
+
+  object SyntacticNew {
+    def apply(earlyDefs: List[Tree], parents: List[Tree], selfdef: ValDef, body: List[Tree]): Tree =
+      gen.mkNew(parents, selfdef, earlyDefs ::: body, NoPosition, NoPosition)
+
+    def unapply(tree: Tree): Option[(List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
+      case SyntacticApplied(Select(New(SyntacticTypeApplied(ident, targs)), nme.CONSTRUCTOR), argss) =>
+        Some((Nil, SyntacticApplied(SyntacticTypeApplied(ident, targs), argss) :: Nil, emptyValDef, Nil))
+      case SyntacticBlock(SyntacticClassDef(_, ANON_CLASS_NAME, Nil, _, List(Nil), earlyDefs, parents, selfdef, body) ::
+                          Apply(Select(New(Ident(ANON_CLASS_NAME)), nme.CONSTRUCTOR), Nil) :: Nil) =>
+        Some((earlyDefs, parents, selfdef, body))
+      case _ =>
+        None
+    }
+  }
+
+  object SyntacticDefDef {
+    def apply(mods: Modifiers, name: TermName, tparams: List[Tree], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree): DefDef =
+      DefDef(mods, name, mkTparams(tparams), mkVparamss(vparamss), tpt, rhs)
+
+    def unapply(tree: Tree): Option[(Modifiers, TermName, List[Tree], List[List[ValDef]], Tree, Tree)] = tree match {
+      case DefDef(mods, name, tparams, vparamss, tpt, rhs) => Some((mods, name.toTermName, tparams, vparamss, tpt, rhs))
+      case _ => None
+    }
+  }
+
+  trait SyntacticValDefBase {
+    val isMutable: Boolean
+
+    def apply(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree) = {
+      val mods1 = if (isMutable) mods | MUTABLE else mods
+      ValDef(mods1, name, tpt, rhs)
+    }
+
+    def unapply(tree: Tree): Option[(Modifiers, TermName, Tree, Tree)] = tree match {
+      case ValDef(mods, name, tpt, rhs) if mods.hasFlag(MUTABLE) == isMutable =>
+        Some((mods, name, tpt, rhs))
+      case _ =>
+        None
+    }
+  }
+
+  object SyntacticValDef extends SyntacticValDefBase { val isMutable = false }
+  object SyntacticVarDef extends SyntacticValDefBase { val isMutable = true }
+
+  object SyntacticAssign {
+    def apply(lhs: Tree, rhs: Tree): Tree = gen.mkAssign(lhs, rhs)
+    def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
+      case Assign(lhs, rhs) => Some((lhs, rhs))
+      case Apply(Select(fn, UPDATE), args :+ rhs) => Some((atPos(fn.pos)(Apply(fn, args)), rhs))
+      case _ => None
+    }
   }
 
   // ==================== TRICKY IMPLEMENTATIONS ====================
 
-  trait Cake {
-    val u: Universe
-    import u._
-    import Flag._
-
+  object treeInfo {
     class Applied(val tree: Tree) {
       def callee: Tree = {
         def loop(tree: Tree): Tree = tree match {
@@ -224,14 +446,16 @@ object QuasiquoteCompatV1 {
     }
 
     object Applied {
-      def apply(tree: Tree): Applied = new Applied(tree)
+      def apply(tree: Tree): treeInfo.Applied = new treeInfo.Applied(tree)
 
-      def unapply(applied: Applied): Option[(Tree, List[Tree], List[List[Tree]])] =
+      def unapply(applied: treeInfo.Applied): Option[(Tree, List[Tree], List[List[Tree]])] =
         Some((applied.core, applied.targs, applied.argss))
 
       def unapply(tree: Tree): Option[(Tree, List[Tree], List[List[Tree]])] =
-        unapply(new Applied(tree))
+        unapply(new treeInfo.Applied(tree))
     }
+
+    def dissectApplied(tree: Tree) = new Applied(tree)
 
     def isEarlyDef(tree: Tree) = tree match {
       case TypeDef(mods, _, _, _) => mods hasFlag PRESUPER
@@ -260,146 +484,308 @@ object QuasiquoteCompatV1 {
       case _ => false
     }
 
-    def mkSuperSelect = Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR)
-
-    def copyValDef(tree: Tree)(
-      mods: Modifiers = null,
-      name: Name      = null,
-      tpt: Tree       = null,
-      rhs: Tree       = null
-    ): ValDef = tree match {
-      case ValDef(mods0, name0, tpt0, rhs0) =>
-        treeCopy.ValDef(tree,
-          if (mods eq null) mods0 else mods,
-          if (name eq null) name0 else name,
-          if (tpt eq null) tpt0 else tpt,
-          if (rhs eq null) rhs0 else rhs
-        )
-      case t =>
-        sys.error("Not a ValDef: " + t + "/" + t.getClass)
+    /** Is name a variable name? */
+    def isVariableName(name: Name): Boolean = {
+      val first = name.toString()(0)
+      (    ((first.isLower && first.isLetter) || first == '_')
+        && (name != FALSE)
+        && (name != TRUE)
+        && (name != NULL)
+      )
     }
 
-    def ensureNonOverlapping(tree: Tree, others: List[Tree]){ ensureNonOverlapping(tree, others, true) }
-    def ensureNonOverlapping(tree: Tree, others: List[Tree], focus: Boolean) {} // FIXME: what about -Yrangepos
+    /** Is tree a variable pattern? */
+    def isVarPattern(pat: Tree): Boolean = pat match {
+      case x: Ident           => !x.isBackquoted && isVariableName(x.name)
+      case _                  => false
+    }
+  }
 
-    def Template(parents: List[Tree], self: ValDef, constrMods: Modifiers, vparamss: List[List[ValDef]], argss: List[List[Tree]], body: List[Tree], superPos: Position): Template = {
+  def copyValDef(tree: Tree)(
+    mods: Modifiers = null,
+    name: Name      = null,
+    tpt: Tree       = null,
+    rhs: Tree       = null
+  ): ValDef = tree match {
+    case ValDef(mods0, name0, tpt0, rhs0) =>
+      treeCopy.ValDef(tree,
+        if (mods eq null) mods0 else mods,
+        if (name eq null) name0 else name,
+        if (tpt eq null) tpt0 else tpt,
+        if (rhs eq null) rhs0 else rhs
+      )
+    case t =>
+      sys.error("Not a ValDef: " + t + "/" + t.getClass)
+  }
+  def copyTypeDef(tree: Tree)(
+    mods: Modifiers        = null,
+    name: Name             = null,
+    tparams: List[TypeDef] = null,
+    rhs: Tree              = null
+  ): TypeDef = tree match {
+    case TypeDef(mods0, name0, tparams0, rhs0) =>
+      treeCopy.TypeDef(tree,
+        if (mods eq null) mods0 else mods,
+        if (name eq null) name0 else name,
+        if (tparams eq null) tparams0 else tparams,
+        if (rhs eq null) rhs0 else rhs
+      )
+    case t =>
+      sys.error("Not a TypeDef: " + t + "/" + t.getClass)
+  }
+
+  implicit class RichSymbol(sym: Symbol) {
+    def companionModule = {
+      val internalSym = sym.asInstanceOf[scala.reflect.internal.Symbols#Symbol]
+      internalSym.companionModule.asInstanceOf[Symbol]
+    }
+  }
+
+  implicit class RichMods(mods: Modifiers) {
+    def |(other: FlagSet) = Modifiers(mods.flags | other, mods.privateWithin, mods.annotations)
+    def &(other: FlagSet) = Modifiers(mods.flags & other, mods.privateWithin, mods.annotations)
+    def &~(other: FlagSet) = Modifiers(mods.flags &~ other, mods.privateWithin, mods.annotations)
+    def withAnnotations(annots: List[Tree]) = Modifiers(mods.flags, mods.privateWithin, annots ::: mods.annotations)
+  }
+
+  implicit class RichFlags(flags: FlagSet)  {
+    def &(other: FlagSet) = (flags.asInstanceOf[Long] & other.asInstanceOf[Long]).toLong.asInstanceOf[FlagSet]
+    def &~(other: FlagSet) = (flags.asInstanceOf[Long] & ~other.asInstanceOf[Long]).toLong.asInstanceOf[FlagSet]
+    def unary_~() = (~flags.asInstanceOf[Long]).toLong.asInstanceOf[FlagSet]
+  }
+
+  implicit class RichTree[T <: Tree](tree: T) {
+    def nonEmpty = tree != EmptyTree
+    def setSymbol(sym: Symbol): T = build.setSymbol(tree, sym)
+    def setType(tpe: Type): T = build.setType(tree, tpe)
+  }
+
+  implicit class RichIdent(tree: Ident) {
+    def isBackquoted = {
+      val symtab = u.asInstanceOf[scala.reflect.internal.SymbolTable]
+      val symtabtree = tree.asInstanceOf[symtab.Tree]
+      symtabtree.attachments.get[symtab.BackquotedIdentifierAttachment.type].isDefined
+    }
+  }
+
+  object gen {
+    def rootId(name: Name)             = Select(Ident(nme.ROOTPKG), name)
+    def rootScalaDot(name: Name)       = Select(rootId(SCALA) setSymbol ScalaPackage, name)
+    def scalaDot(name: Name)           = Select(Ident(SCALA) setSymbol ScalaPackage, name)
+    def scalaAnyRefConstr              = scalaAnyRefConstrRaw setSymbol AnyRefClass // used in ide
+    def scalaAnyRefConstrRaw           = scalaDot(ANYREF)
+
+    def mkSuperInitCall: Select = Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR)
+
+    /** Generates a template with constructor corresponding to
+     *
+     *  constrmods (vparams1_) ... (vparams_n) preSuper { presupers }
+     *  extends superclass(args_1) ... (args_n) with mixins { self => body }
+     *
+     *  This gets translated to
+     *
+     *  extends superclass with mixins { self =>
+     *    presupers' // presupers without rhs
+     *    vparamss   // abstract fields corresponding to value parameters
+     *    def <init>(vparamss) {
+     *      presupers
+     *      super.<init>(args)
+     *    }
+     *    body
+     *  }
+     */
+    def mkTemplate(parents: List[Tree], self: ValDef, constrMods: Modifiers,
+                   vparamss: List[List[ValDef]], body: List[Tree], superPos: Position = NoPosition): Template = {
       /* Add constructor to template */
 
       // create parameters for <init> as synthetic trees.
-      var vparamss1 = vparamss map (_ map { vd =>
+      var vparamss1 = vparamss.map { _.map { vd =>
         atPos(vd.pos.focus) {
-          val PARAMACCESSOR = scala.reflect.internal.Flags.PARAMACCESSOR.asInstanceOf[Long].asInstanceOf[FlagSet]
-          val flags1 = (vd.mods.flags.asInstanceOf[Long] & (IMPLICIT | DEFAULTPARAM | BYNAMEPARAM).asInstanceOf[Long]).asInstanceOf[FlagSet]
-          val mods = u.Modifiers(flags1 | PARAM | PARAMACCESSOR)
-          // FIXME: val mods1 = mods.withAnnotations(vd.mods.annotations)
-          val mods1 = mods
-          ValDef(mods1, vd.name, vd.tpt.duplicate, vd.rhs.duplicate)
+          val mods = Modifiers(vd.mods.flags & (IMPLICIT | DEFAULTPARAM | BYNAMEPARAM) | PARAM | PARAMACCESSOR)
+          ValDef(mods withAnnotations vd.mods.annotations, vd.name, vd.tpt.duplicate, vd.rhs.duplicate)
         }
-      })
-      val (edefs, rest) = body span isEarlyDef
-      val (evdefs, etdefs) = edefs partition isEarlyValDef
+      } }
+      val (edefs, rest) = body span treeInfo.isEarlyDef
+      val (evdefs, etdefs) = edefs partition treeInfo.isEarlyValDef
       val gvdefs = evdefs map {
         case vdef @ ValDef(_, _, tpt, _) =>
           copyValDef(vdef)(
-          // atPos for the new tpt is necessary, since the original tpt might have no position
-          // (when missing type annotation for ValDef for example), so even though setOriginal modifies the
-          // position of TypeTree, it would still be NoPosition. That's what the author meant.
-          // FIXME: tpt = atPos(vdef.pos.focus)(TypeTree() setOriginal tpt setPos tpt.pos.focus),
-          tpt = atPos(vdef.pos.focus)(TypeTree()),
+          // can't use typetree wrapper here, have to resort to plain duplication
+          tpt = atPos(vdef.pos.focus)(tpt.duplicate),
           rhs = EmptyTree
         )
       }
-      // FIXME: val lvdefs = evdefs collect { case vdef: ValDef => copyValDef(vdef)(mods = vdef.mods | PRESUPER) }
-      val lvdefs = evdefs collect { case vdef: ValDef => copyValDef(vdef)(mods = vdef.mods) }
+      val lvdefs = evdefs collect { case vdef: ValDef => copyValDef(vdef)(mods = vdef.mods | PRESUPER) }
 
-      val constrs = {
-        if (constrMods hasFlag TRAIT) {
-          if (body forall isInterfaceMember) List()
-          else List(
+      val (parents1, argss) =
+        if (constrMods.hasFlag(TRAIT)) (parents, Nil)
+        else {
+          val SyntacticApplied(parent, argss) = parents.head
+          val argss1 = if (argss.isEmpty) List(Nil) else argss
+          (parent :: parents.tail, argss1)
+        }
+
+      val constr = {
+        if (constrMods.hasFlag(TRAIT)) {
+          if (body forall treeInfo.isInterfaceMember) None
+          else Some(
             atPos(wrappingPos(superPos, lvdefs)) (
-              DefDef(NoMods, newTermName("$init$"), List(), List(List()), TypeTree(), u.Block(lvdefs, Literal(Constant(()))))))
+              DefDef(NoMods, MIXIN_CONSTRUCTOR, List(), List(Nil), TypeTree(), Block(lvdefs, Literal(Constant())))))
         } else {
           // convert (implicit ... ) to ()(implicit ... ) if its the only parameter section
           if (vparamss1.isEmpty || !vparamss1.head.isEmpty && vparamss1.head.head.mods.hasFlag(IMPLICIT))
-            vparamss1 = List() :: vparamss1;
-          val superRef: Tree = atPos(superPos)(mkSuperSelect)
+            vparamss1 = List() :: vparamss1
+          val superRef: Tree = atPos(superPos)(mkSuperInitCall)
           val superCall = (superRef /: argss) (Apply.apply)
-          List(
-            atPos(wrappingPos(superPos, lvdefs ::: argss.flatten)) (
-              DefDef(constrMods, nme.CONSTRUCTOR, List(), vparamss1, TypeTree(), u.Block(lvdefs ::: List(superCall), Literal(Constant(()))))))
+          Some(
+            // TODO: previously this was `wrappingPos(superPos, lvdefs ::: argss.flatten)`
+            // is it going to be a problem that we can no longer include the `argss`?
+            atPos(wrappingPos(superPos, lvdefs)) (
+              DefDef(constrMods, nme.CONSTRUCTOR, List(), vparamss1, TypeTree(), Block(lvdefs ::: List(superCall), Literal(Constant())))))
         }
       }
-      constrs foreach (ensureNonOverlapping(_, parents ::: gvdefs, focus=false))
+      // FIXME: cant't really check this without internal api
+      // constr foreach (ensureNonOverlapping(_, parents1 ::: gvdefs, focus=false))
+
       // Field definitions for the class - remove defaults.
-      // FIXME: val fieldDefs = vparamss.flatten map (vd => copyValDef(vd)(mods = vd.mods &~ DEFAULTPARAM, rhs = EmptyTree))
-      val fieldDefs = vparamss.flatten map (vd => copyValDef(vd)(mods = vd.mods, rhs = EmptyTree))
+      val fieldDefs = vparamss.flatten map (vd => copyValDef(vd)(mods = vd.mods &~ DEFAULTPARAM, rhs = EmptyTree))
 
-      u.Template(parents, self, gvdefs ::: fieldDefs ::: constrs ::: etdefs ::: rest)
+      u.Template(parents1, self, gvdefs ::: fieldDefs ::: constr ++: etdefs ::: rest)
     }
 
-    object SyntacticClassDef {
-      def apply(mods: Modifiers, name: TypeName, tparams: List[TypeDef],
-                constrMods: Modifiers, vparamss: List[List[ValDef]],
-                parents: List[Tree], argss: List[List[Tree]],
-                selfdef: ValDef, body: List[Tree]): Tree = {
-        ClassDef(mods, name, tparams, Template(parents, selfdef, constrMods, vparamss, argss, body, NoPosition))
-      }
+    def mkParents(ownerMods: Modifiers, parents: List[Tree], parentPos: Position = NoPosition) =
+      if (ownerMods.hasFlag(CASE)) parents ::: List(scalaDot(PRODUCT), scalaDot(SERIALIZABLE))
+      else if (parents.isEmpty) atPos(parentPos)(scalaAnyRefConstrRaw) :: Nil
+      else parents
 
-      def unapply(tree: Tree): Option[(Modifiers, TypeName, List[TypeDef],
-                                       Modifiers, List[List[ValDef]],
-                                       List[Tree], List[List[Tree]],
-                                       ValDef, List[Tree])] = tree match {
-        case ClassDef(mods, name, tparams, Template(parents, selfdef, tbody)) if (mods.flags.asInstanceOf[Long] & scala.reflect.internal.Flags.TRAIT) != 0 =>
-          Some((mods, name, tparams, NoMods, List(Nil), parents, Nil, selfdef, tbody))
-
-        case ClassDef(mods, name, tparams, Template(parents, selfdef, tbody)) =>
-          // extract generated fieldDefs and constructor
-          val (defs, (ctor: DefDef) :: body) = tbody.splitAt(tbody.indexWhere {
-            case DefDef(_, nme.CONSTRUCTOR, _, _, _, _) => true
-            case _ => false
-          })
-          val (imports, others) = defs.span(_.getClass == ImportTag.runtimeClass)
-          val (earlyDefs, fieldDefs) = defs.span(isEarlyDef)
-          val (fieldValDefs, fieldAccessorDefs) = fieldDefs.partition(_.getClass == ValDefTag.runtimeClass)
-
-          // undo conversion from (implicit ... ) to ()(implicit ... ) when its the only parameter section
-          val vparamssRestoredImplicits = ctor.vparamss match {
-            case Nil :: rest if !rest.isEmpty && !rest.head.isEmpty && rest.head.head.mods.hasFlag(IMPLICIT) => rest
-            case other => other
-          }
-
-          val (argss, superPos) = ctor.rhs match {
-            case Block(_ :+ ValDef(_, _, _, _), Literal(Constant(()))) => (Nil, NoPosition)
-            case Block(_ :+ (superCall @ Applied(core, _, argss)), Literal(Constant(()))) => (argss, core.pos)
-            case _ => (Nil, NoPosition)
-          }
-
-          // undo flag modifications by merging flag info from constructor args and fieldValDefs
-          val modsMap = fieldValDefs.map { case ValDef(mods, name, _, _) => name -> mods }.toMap
-          val vparamss = vparamssRestoredImplicits.map(_.map(vd => {
-            val mods1 = modsMap(vd.name)
-            val flags1 = mods1.flags.asInstanceOf[Long]
-            val flags2 = flags1 | (vd.mods.flags.asInstanceOf[Long] & DEFAULTPARAM.asInstanceOf[Long])
-            val originalMods =
-              if (flags1 == flags2) mods1
-              else u.Modifiers(flags2.asInstanceOf[FlagSet], mods1.privateWithin, mods1.annotations) /* FIXME: setPositions positions */
-            // val originalMods = modsMap(vd.name) | (vd.mods.flags & DEFAULTPARAM)
-            atPos(vd.pos)(ValDef(originalMods, vd.name, vd.tpt, vd.rhs))
-          }))
-
-          Some((mods, name, tparams, ctor.mods, vparamss, parents, argss, selfdef, imports ::: earlyDefs ::: body))
-        case _ =>
-          None
-      }
+    def mkClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], templ: Template): ClassDef = {
+      val isInterface = mods.hasFlag(TRAIT) && (templ.body forall treeInfo.isInterfaceMember)
+      val mods1 = if (isInterface) (mods | INTERFACE) else mods
+      ClassDef(mods1, name, tparams, templ)
     }
 
-    val MaxTupleArity = 22
-
-    implicit class RichSymbol(sym: Symbol) {
-      def companionModule = {
-        val internalSym = sym.asInstanceOf[scala.reflect.internal.Symbols#Symbol]
-        internalSym.companionModule.asInstanceOf[Symbol]
+    /** Create positioned tree representing an object creation <new parents { stats }
+     *  @param npos  the position of the new
+     *  @param cpos  the position of the anonymous class starting with parents
+     */
+    def mkNew(parents: List[Tree], self: ValDef, stats: List[Tree],
+              npos: Position, cpos: Position): Tree =
+      if (parents.isEmpty)
+        mkNew(List(scalaAnyRefConstr), self, stats, npos, cpos)
+      else if (parents.tail.isEmpty && stats.isEmpty) {
+        // `Parsers.template` no longer differentiates tpts and their argss
+        // e.g. `C()` will be represented as a single tree Apply(Ident(C), Nil)
+        // instead of parents = Ident(C), argss = Nil as before
+        // this change works great for things that are actually templates
+        // but in this degenerate case we need to perform postprocessing
+        val app = treeInfo.dissectApplied(parents.head)
+        atPos(npos union cpos) { New(app.callee, app.argss) }
+      } else {
+        val x = ANON_CLASS_NAME
+        atPos(npos union cpos) {
+          Block(
+            List(
+              atPos(cpos) {
+                ClassDef(
+                  Modifiers(FINAL), x, Nil,
+                  mkTemplate(parents, self, NoMods, List(Nil), stats, cpos.focus))
+              }),
+            atPos(npos) {
+              New(
+                atPos(npos.focus)(Ident(x)),
+                Nil)
+            }
+          )
+        }
       }
+
+    /** Create a tree representing the function type (argtpes) => restpe */
+    def mkFunctionTypeTree(argtpes: List[Tree], restpe: Tree): Tree =
+      AppliedTypeTree(rootScalaDot(newTypeName("Function" + argtpes.length)), argtpes ::: List(restpe))
+
+    /** Create block of statements `stats`  */
+    def mkBlock(stats: List[Tree]): Tree =
+      if (stats.isEmpty) Literal(Constant(()))
+      else if (!stats.last.isTerm) Block(stats, Literal(Constant(())))
+      else if (stats.length == 1) stats.head
+      else Block(stats.init, stats.last)
+
+    /** Create a tree representing an assignment <lhs = rhs> */
+    def mkAssign(lhs: Tree, rhs: Tree): Tree = lhs match {
+      case Apply(fn, args) =>
+        Apply(atPos(fn.pos)(Select(fn, UPDATE)), args :+ rhs)
+      case _ =>
+        Assign(lhs, rhs)
+    }
+
+    def mkTreeOrBlock(stats: List[Tree]) = stats match {
+      case Nil => EmptyTree
+      case head :: Nil => head
+      case _ => gen.mkBlock(stats)
     }
   }
+
+  // ==================== PRIVATE APIS FROM TREEBUILDER ====================
+
+  /** Convert all occurrences of (lower-case) variables in a pattern as follows:
+   *    x                  becomes      x @ _
+   *    x: T               becomes      x @ (_: T)
+   */
+  object patvarTransformer extends Transformer {
+    override def transform(tree: Tree): Tree = tree match {
+      case Ident(name) if (treeInfo.isVarPattern(tree) && name != nme.WILDCARD) =>
+        atPos(tree.pos)(Bind(name, atPos(tree.pos.focus) (Ident(nme.WILDCARD))))
+      case Typed(id @ Ident(name), tpt) if (treeInfo.isVarPattern(id) && name != nme.WILDCARD) =>
+        atPos(tree.pos.withPoint(id.pos.point)) {
+          Bind(name, atPos(tree.pos.withStart(tree.pos.point)) {
+            Typed(Ident(nme.WILDCARD), tpt)
+          })
+        }
+      case Apply(fn @ Apply(_, _), args) =>
+        treeCopy.Apply(tree, transform(fn), transformTrees(args))
+      case Apply(fn, args) =>
+        treeCopy.Apply(tree, fn, transformTrees(args))
+      case Typed(expr, tpt) =>
+        treeCopy.Typed(tree, transform(expr), tpt)
+      case Bind(name, body) =>
+        treeCopy.Bind(tree, name, transform(body))
+      case Alternative(_) | Star(_) =>
+        super.transform(tree)
+      case _ =>
+        tree
+    }
+  }
+
+  // ==================== DEPRECATED FROM PUBLIC API ====================
+
+  /** Factory method for object creation `new tpt(args_1)...(args_n)`
+   *  A `New(t, as)` is expanded to: `(new t).<init>(as)`
+   */
+  def New(tpt: Tree, argss: List[List[Tree]]): Tree = argss match {
+    case Nil        => ApplyConstructor(tpt, Nil)
+    case xs :: rest => rest.foldLeft(ApplyConstructor(tpt, xs): Tree)(Apply.apply)
+  }
+
+  def ApplyConstructor(tpt: Tree, args: List[Tree]) = Apply(Select(u.New(tpt), nme.CONSTRUCTOR), args)
+
+  // ==================== CONSTANTS ====================
+
+  val MaxFunctionArity, MaxTupleArity = 22
+
+  lazy val MIXIN_CONSTRUCTOR = TermName("$init$")
+  lazy val SCALA             = TermName("scala")
+  lazy val UPDATE            = TermName("update")
+  lazy val FALSE             = TermName("false")
+  lazy val TRUE              = TermName("true")
+  lazy val NULL              = TermName("null")
+
+  lazy val ANYREF            = TypeName("AnyRef")
+  lazy val ANON_CLASS_NAME   = TypeName("$anon")
+  lazy val PRODUCT           = TypeName("Product")
+  lazy val SERIALIZABLE      = TypeName("Serializable")
+  lazy val UNIT              = TypeName("Unit")
+
+  val JAVA              = (1 << 20).toLong.asInstanceOf[FlagSet]
+  val CASEACCESSOR      = (1 << 24).toLong.asInstanceOf[FlagSet]
+  val PARAMACCESSOR     = (1 << 29).toLong.asInstanceOf[FlagSet]
 }

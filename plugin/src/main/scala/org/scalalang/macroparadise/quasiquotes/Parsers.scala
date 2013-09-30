@@ -17,51 +17,43 @@ trait Parsers { self: Quasiquotes =>
   abstract class Parser extends {
     val global: self.global.type = self.global
   } with ParadiseParser {
-    /** Wraps given code to obtain a desired parser mode.
-     *  This way we can just re-use standard parser entry point.
-     */
-    def wrapCode(code: String): String =
-      s"object wrapper { self => $EOL $code $EOL }"
-
-    def unwrapTree(wrappedTree: Tree): Tree = {
-      val PackageDef(_, List(ModuleDef(_, _, Template(_, _, _ :: parsed)))) = wrappedTree
-      parsed match {
-        case tree :: Nil => tree
-        case stats :+ tree => Block(stats, tree)
-      }
-    }
-
     def parse(code: String): Tree = {
       try {
-        val wrapped = wrapCode(code)
-        debug(s"wrapped code\n=${wrapped}\n")
-        val file = new BatchSourceFile(nme.QUASIQUOTE_FILE, wrapped)
-        val tree = new QuasiquoteParser(file).parse()
-        unwrapTree(tree)
+        val file = new BatchSourceFile(nme.QUASIQUOTE_FILE, code)
+        new QuasiquoteParser(file).parseRule(entryPoint)
       } catch {
-        case mi: MalformedInput => c.abort(correspondingPosition(mi.offset), s"${mi.msg}")
+        case mi: MalformedInput => c.abort(correspondingPosition(mi.offset), mi.msg)
       }
     }
 
-    // https://github.com/densh/scala/commit/a708b287a9a52e5c803a9e917b92970bc590e294
     def correspondingPosition(offset: Int): Position = {
-      val wrapperOffset = wrapCode("$$$").indexOf("$$$")
-      val adjustedPosMap = posMap.map { case (pos, (s, e)) => (pos, (s + wrapperOffset, e + wrapperOffset)) }.toList
-      adjustedPosMap.sliding(2).collect {
-        case (pos1, (start1, end1)) :: _ if start1 <= offset && offset <= end1 => (pos1, offset - start1)
-        case (pos1, (_, end1)) :: (_, (start2, _)) :: _ if end1 < offset && offset < start2 => (pos1, end1 - wrapperOffset)
-        case _ :: (pos2, (start2, end2)) :: _ if start2 <= offset && offset <= end2 => (pos2, offset - start2)
+      val posMapList = posMap.toList
+      def containsOffset(start: Int, end: Int) = start <= offset && offset <= end
+      def fallbackPosition = posMapList match {
+        case (pos1, (start1, end1)) :: _   if start1 > offset => pos1
+        case _ :+ ((pos2, (start2, end2))) if offset > end2   => pos2.withPoint(pos2.point + (end2 - start2))
+      }
+      posMapList.sliding(2).collect {
+        case (pos1, (start1, end1)) :: _                if containsOffset(start1, end1) => (pos1, offset - start1)
+        case (pos1, (_, end1)) :: (_, (start2, _)) :: _ if containsOffset(end1, start2) => (pos1, end1)
+        case _ :: (pos2, (start2, end2)) :: _           if containsOffset(start2, end2) => (pos2, offset - start2)
       }.map { case (pos, offset) =>
         pos.withPoint(pos.point + offset)
-      }.toList.headOption.getOrElse {
-        adjustedPosMap match {
-          case (pos1, (start1, end1)) :: _ if start1 > offset => pos1
-          case _ :+ ((pos2, (start2, end2))) if offset > end2 => pos2.withPoint(pos2.point + (end2 - start2))
-        }
-      }
+      }.toList.headOption.getOrElse(fallbackPosition)
     }
 
-    class QuasiquoteParser(source0: SourceFile) extends ParadiseSourceFileParser(source0) {
+    override def token2string(token: Int): String = token match {
+      case EOF => "end of quote"
+      case _ => super.token2string(token)
+    }
+
+    def entryPoint: QuasiquoteParser => Tree
+
+    class QuasiquoteParser(source0: SourceFile) extends ParadiseSourceFileParser(source0) { parser =>
+      def isHole: Boolean = isIdent && isHole(in.name)
+
+      def isHole(name: Name): Boolean = holeMap.contains(name)
+
       override val treeBuilder = new ParadiseParserTreeBuilder {
         // q"(..$xs)"
         override def makeTupleTerm(trees: List[Tree], flattenUnary: Boolean): Tree =
@@ -73,11 +65,15 @@ trait Parsers { self: Quasiquotes =>
 
         // q"{ $x }"
         override def makeBlock(stats: List[Tree]): Tree = stats match {
-          case (head @ Ident(name)) :: Nil if holeMap.contains(name) => Block(Nil, head)
+          case (head @ Ident(name)) :: Nil if isHole(name) => Block(Nil, head)
           case _ => super.makeBlock(stats)
         }
+
+        // tq"$a => $b"
+        override def makeFunctionTypeTree(argtpes: List[Tree], restpe: Tree): Tree =
+          AppliedTypeTree(Ident(tpnme.QUASIQUOTE_FUNCTION), argtpes :+ restpe)
       }
-      import treeBuilder.{global => _, _}
+      import treeBuilder.{global => _, unit => _, _}
 
       // q"def foo($x)"
       override def allowTypelessParams = true
@@ -91,9 +87,14 @@ trait Parsers { self: Quasiquotes =>
         } else
           super.caseClause()
 
-      def isHole = isIdent && holeMap.contains(in.name)
+      override def caseBlock(): Tree = super.caseBlock() match {
+        case Block(Nil, expr) => expr
+        case other => other
+      }
 
-      override def isAnnotation: Boolean =  super.isAnnotation || (isHole && lookingAhead { isAnnotation })
+      override def isAnnotation: Boolean = super.isAnnotation || (isHole && lookingAhead { isAnnotation })
+
+      override def isCaseDefStart: Boolean = super.isCaseDefStart || (in.token == EOF)
 
       override def isModifier: Boolean = super.isModifier || (isHole && lookingAhead { isModifier })
 
@@ -103,50 +104,61 @@ trait Parsers { self: Quasiquotes =>
 
       override def isDclIntro: Boolean = super.isDclIntro || (isHole && lookingAhead { isDclIntro })
 
+      override def isStatSep(token: Int) = token == EOF || super.isStatSep(token)
+
+      override def expectedMsg(token: Int): String =
+        if (isHole) expectedMsgTemplate(token2string(token), "splicee")
+        else super.expectedMsg(token)
+
       // $mods def foo
       // $mods T
-      override def readAnnots[T](annot: => T): List[T] = in.token match {
+      override def readAnnots(annot: => Tree): List[Tree] = in.token match {
         case AT =>
           in.nextToken()
           annot :: readAnnots(annot)
-        case _ if isHole && lookingAhead { in.token == AT || isModifier || isDefIntro || isIdent} =>
-          val ann = Apply(Select(New(Ident(tpnme.QUASIQUOTE_MODS)), nme.CONSTRUCTOR), List(Literal(Constant(in.name.toString)))).asInstanceOf[T]
+        case _ if isHole && lookingAhead { isAnnotation || isModifier || isDefIntro || isIdent || isStatSep || in.token == LPAREN } =>
+          val ann = Apply(Select(New(Ident(tpnme.QUASIQUOTE_MODS)), nme.CONSTRUCTOR), List(Literal(Constant(in.name.toString))))
           in.nextToken()
           ann :: readAnnots(annot)
         case _ =>
           Nil
       }
+
+      override def refineStat(): List[Tree] =
+        if (isHole && !isDclIntro) {
+          val result = ValDef(NoMods, in.name, Ident(tpnme.QUASIQUOTE_REFINE_STAT), EmptyTree) :: Nil
+          in.nextToken()
+          result
+        } else super.refineStat()
+
+      override def ensureEarlyDef(tree: Tree) = tree match {
+        case Ident(name: TermName) if isHole(name) => ValDef(NoMods | Flag.PRESUPER, name, Ident(tpnme.QUASIQUOTE_EARLY_DEF), EmptyTree)
+        case _ => super.ensureEarlyDef(tree)
+      }
+
+      override def isTypedParam(tree: Tree) = super.isTypedParam(tree) || (tree match {
+        case Ident(name) if isHole(name) => true
+        case _ => false
+      })
     }
   }
 
-  object TermParser extends Parser
-
-  object CaseParser extends Parser {
-    override def wrapCode(code: String) = super.wrapCode("something match { case " + code + " }")
-
-    override def unwrapTree(wrappedTree: Tree): Tree = {
-      val Match(_, head :: tail) = super.unwrapTree(wrappedTree)
-      if (tail.nonEmpty)
-        c.abort(c.macroApplication.pos, "Can't parse more than one casedef, consider generating a match tree instead")
-      head
-    }
-  }
-
-  object PatternParser extends Parser {
-    override def wrapCode(code: String) = super.wrapCode("something match { case " + code + " => }")
-
-    override def unwrapTree(wrappedTree: Tree): Tree = {
-      val Match(_, List(CaseDef(pat, _, _))) = super.unwrapTree(wrappedTree)
-      pat
-    }
+  object TermParser extends Parser {
+    def entryPoint = { parser => compat.gen.mkTreeOrBlock(parser.templateStats()) }
   }
 
   object TypeParser extends Parser {
-    override def wrapCode(code: String) = super.wrapCode("type T = " + code)
+    def entryPoint = _.typ()
+  }
 
-    override def unwrapTree(wrappedTree: Tree): Tree = {
-      val TypeDef(_, _, _, rhs) = super.unwrapTree(wrappedTree)
-      rhs
+  object CaseParser extends Parser {
+    def entryPoint = _.caseClause()
+  }
+
+  object PatternParser extends Parser {
+    def entryPoint = { parser =>
+      val pat = parser.noSeq.pattern1()
+      compat.patvarTransformer.transform(pat)
     }
   }
 }
