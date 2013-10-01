@@ -1,8 +1,10 @@
-import scala.reflect.{classTag, ClassTag}
 import scala.reflect.runtime.universe._
-import scala.tools.reflect.ToolBox
-import scala.tools.reflect.ToolBoxError
+import scala.reflect.runtime.universe.definitions._
+import scala.reflect.runtime.universe.Flag._
+import scala.reflect.runtime.currentMirror
+import scala.reflect.api.{Liftable, Universe}
 import scala.reflect.macros.TypecheckException
+import scala.tools.reflect.{ToolBox, ToolBoxError}
 
 import org.scalacheck._
 import Prop._
@@ -42,8 +44,8 @@ trait Helpers {
     def ≈(other: Modifiers) = (mods.flags == other.flags) && (mods.privateWithin ≈ other.privateWithin) && (mods.annotations ≈ other.annotations)
   }
 
-  def assertThrows[T <: AnyRef : ClassTag](f: => Any): Unit = {
-    val clazz = classTag[T].runtimeClass
+  def assertThrows[T <: AnyRef](f: => Any)(implicit manifest: Manifest[T]): Unit = {
+    val clazz = manifest.erasure.asInstanceOf[Class[T]]
     val thrown =
       try {
         f
@@ -58,6 +60,18 @@ trait Helpers {
       assert(false, "exception wasn't thrown")
   }
 
+  // can't rely on toolbox due to flawed tree importer in 2.10
+  // therefore rhs can't be string but a tree from another qq
+  def assertEqAst(tree: Tree, code: Tree) = assert(eqAst(tree, code))
+  def eqAst(tree: Tree, code: Tree) = tree ≈ code
+
+  val plugin = System.getProperty("macroparadise.plugin.jar")
+  assert(plugin != null)
+  val toolbox = rootMirror.mkToolBox(options = "-Xplugin:" + plugin)
+  val parse = toolbox.parse(_)
+  val compile = toolbox.compile(_)
+  val eval = toolbox.eval(_)
+
   def fails(msg: String, block: String) = {
     def result(ok: Boolean, description: String = "") = {
       val status = if (ok) Prop.Proof else Prop.False
@@ -65,16 +79,12 @@ trait Helpers {
       Prop { new Prop.Result(status, Nil, Set.empty, labels) }
     }
     try {
-      val plugin = System.getProperty("macroparadise.plugin.jar")
-      assert(plugin != null)
-      val tb = rootMirror.mkToolBox(options = "-Xplugin:" + plugin)
-      val tree = tb.parse(s"""
+      compile(parse(s"""
         object Wrapper extends Helpers {
           import scala.reflect.runtime.universe._
           $block
         }
-      """)
-      tb.compile(tree)
+      """))
       result(false, "given code doesn't fail to typecheck")
     } catch {
       case ToolBoxError(emsg, _) =>

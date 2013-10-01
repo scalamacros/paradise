@@ -19,8 +19,8 @@ trait TreeInfo {
     // TODO: no immediate idea how to write this in a sane way
     def getAnnotationZippers(tree: Tree): List[AnnotationZipper] = {
       def loop[T <: Tree](tree: T, deep: Boolean): List[AnnotationZipper] = tree match {
-        case cdef @ ClassDef(mods, _, _, _) =>
-          val SyntacticClassDef(mods, name, tparams, ctormods, vparamss, parents, argss, selfdef, body, superpos) = cdef
+        case compat.SyntacticClassDef(mods, name, tparams, ctormods, vparamss, earlyDefs, parents, selfdef, body) =>
+          val cdef = tree.asInstanceOf[ClassDef]
           val czippers = mods.annotations.map(ann => {
             val annottee = cdef.copy(mods = mods.mapAnnotations(_ diff List(ann)))
             AnnotationZipper(ann, annottee, annottee)
@@ -38,8 +38,23 @@ trait TreeInfo {
               AnnotationZipper(ann, vparam1: ValDef, _) <- loop(vparam, deep = false)
               vparams1 = vparams.updated(vparams.indexOf(vparam), vparam1)
               vparamss1 = vparamss.updated(vparamss.indexOf(vparams), vparams1)
-            } yield AnnotationZipper(ann, vparam1, SyntacticClassDef(mods, name, tparams, ctormods, vparamss1, parents, argss, selfdef, body, superpos))
+            } yield AnnotationZipper(ann, vparam1, compat.SyntacticClassDef(mods, name, tparams, ctormods, vparamss1, earlyDefs, parents, selfdef, body))
             czippers ++ tzippers ++ vzippers
+          }
+        case compat.SyntacticTraitDef(mods, name, tparams, earlyDefs, parents, selfdef, body) =>
+          val tdef = tree.asInstanceOf[ClassDef]
+          val czippers = mods.annotations.map(ann => {
+            val annottee = tdef.copy(mods = mods.mapAnnotations(_ diff List(ann)))
+            AnnotationZipper(ann, annottee, annottee)
+          })
+          if (!deep) czippers
+          else {
+            val tzippers = for {
+              tparam <- tparams
+              AnnotationZipper(ann, tparam1: TypeDef, _) <- loop(tparam, deep = false)
+              tparams1 = tparams.updated(tparams.indexOf(tparam), tparam1)
+            } yield AnnotationZipper(ann, tparam1, tdef.copy(tparams = tparams1))
+            czippers ++ tzippers
           }
         case mdef @ ModuleDef(mods, _, _) =>
           mods.annotations.map(ann => {

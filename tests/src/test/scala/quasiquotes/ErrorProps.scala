@@ -25,7 +25,7 @@ class ErrorProps extends QuasiquoteProperties("errors") {
   property("splice typename into typedef with default bounds") = fails(
     "reflect.runtime.universe.Name expected but reflect.runtime.universe.TypeDef found",
     """
-      val T1 = TypeName("T1")
+      val T1 = newTypeName("T1")
       val T2 = q"type T"
       val t = EmptyTree
       q"type $T1[$T2 >: _root_.scala.Any <: _root_.scala.Nothing] = $t" ≈
@@ -187,12 +187,6 @@ class ErrorProps extends QuasiquoteProperties("errors") {
     "Can't extract multiple modifiers together, consider extracting a single modifiers instance",
     """
       val q"$m1 $m2 def foo" = EmptyTree
-    """)
-
-  property("can't parse more than one casedef") = fails(
-    "Can't parse more than one casedef, consider generating a match tree instead",
-    """
-      cq"1 => 2 case 3 => 5"
     """)
 
   // // Make sure a nice error is reported in this case
