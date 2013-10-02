@@ -630,7 +630,7 @@ trait QuasiquoteCompatV2 {
           if (body forall treeInfo.isInterfaceMember) None
           else Some(
             atPos(wrappingPos(superPos, lvdefs)) (
-              DefDef(NoMods, MIXIN_CONSTRUCTOR, List(), List(Nil), TypeTree(), Block(lvdefs, Literal(Constant())))))
+              DefDef(NoMods, MIXIN_CONSTRUCTOR, List(), List(Nil), TypeTree(), Block(lvdefs, Literal(Constant(()))))))
         } else {
           // convert (implicit ... ) to ()(implicit ... ) if its the only parameter section
           if (vparamss1.isEmpty || !vparamss1.head.isEmpty && vparamss1.head.head.mods.hasFlag(IMPLICIT))
@@ -641,7 +641,7 @@ trait QuasiquoteCompatV2 {
             // TODO: previously this was `wrappingPos(superPos, lvdefs ::: argss.flatten)`
             // is it going to be a problem that we can no longer include the `argss`?
             atPos(wrappingPos(superPos, lvdefs)) (
-              DefDef(constrMods, nme.CONSTRUCTOR, List(), vparamss1, TypeTree(), Block(lvdefs ::: List(superCall), Literal(Constant())))))
+              DefDef(constrMods, nme.CONSTRUCTOR, List(), vparamss1, TypeTree(), Block(lvdefs ::: List(superCall), Literal(Constant(()))))))
         }
       }
       // FIXME: cant't really check this without internal api
