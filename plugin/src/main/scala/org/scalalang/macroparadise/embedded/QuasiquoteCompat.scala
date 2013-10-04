@@ -158,10 +158,12 @@ trait QuasiquoteCompatV2 {
         val (rawEdefs, rest) = tbody.span(treeInfo.isEarlyDef)
         val (gvdefs, etdefs) = rawEdefs.partition(treeInfo.isEarlyValDef)
         val (fieldDefs, UnCtor(ctorMods, ctorVparamss, argss, lvdefs) :: body) = rest.splitAt(indexOfCtor(rest))
-        val parents = {
-          val head :: tail = parents0
-          if (argss == List(Nil)) parents0
-          else SyntacticApplied(head, argss) :: tail
+        val parents = parents0 match {
+          case head :: tail =>
+            if (argss == List(Nil)) parents0
+            else SyntacticApplied(head, argss) :: tail
+          case Nil =>
+            Nil
         }
         val evdefs = gvdefs.zip(lvdefs).map {
           case (gvdef @ ValDef(_, _, tpt: TypeTree, _), ValDef(_, _, _, rhs)) =>
