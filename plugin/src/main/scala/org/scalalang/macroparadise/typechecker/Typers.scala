@@ -113,5 +113,14 @@ trait Typers {
         case _ => super.checkExistentialsFeature(pos, tpe, prefix)
       }
     }
+
+    val context0 = context
+    override val infer = new ParadiseInferencer(context0) {
+      override def isCoercible(tp: Type, pt: Type): Boolean = undoLog undo { // #3281
+        tp.isError || pt.isError ||
+        context0.implicitsEnabled && // this condition prevents chains of views
+        inferView(EmptyTree, tp, pt, false) != EmptyTree
+      }
+    }
   }
 }

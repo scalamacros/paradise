@@ -7,6 +7,8 @@ import org.scalalang.macroparadise.reflect.Enrichments
 trait Analyzer extends NscAnalyzer
                   with Namers
                   with Typers
+                  with Infer
+                  with Implicits
                   with Enrichments
                   with ContextErrors
                   with AnalyzerPlugins
