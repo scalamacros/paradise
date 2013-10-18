@@ -394,10 +394,10 @@ trait Implicits extends NscImplicits {
     private def typedImplicit1(info: ImplicitInfo, isLocal: Boolean): SearchResult = {
       if (Statistics.canEnable) Statistics.incCounter(matchingImplicits)
 
-      val itree = atPos(pos.focus) {
-        // workaround for deficient context provided by ModelFactoryImplicitSupport#makeImplicitConstraints
-        val isScalaDoc = context.tree == EmptyTree
+      // workaround for deficient context provided by ModelFactoryImplicitSupport#makeImplicitConstraints
+      val isScalaDoc = context.tree == EmptyTree
 
+      val itree = atPos(pos.focus) {
         if (isLocal && !isScalaDoc) {
           // SI-4270 SI-5376 Always use an unattributed Ident for implicits in the local scope,
           // rather than an attributed Select, to detect shadowing.
@@ -422,7 +422,23 @@ trait Implicits extends NscImplicits {
               atPos(itree.pos)(Apply(itree, List(Ident("<argument>") setType approximate(arg1)))),
               EXPRmode,
               approximate(arg2)
-            )
+            ) match {
+              // try to infer implicit parameters immediately in order to:
+              //   1) guide type inference for implicit views
+              //   2) discard ineligible views right away instead of risking spurious ambiguous implicits
+              //
+              // this is an improvement of the state of the art that brings consistency to implicit resolution rules
+              // (and also helps fundep materialization to be applicable to implicit views)
+              //
+              // there's one caveat though. we need to turn this behavior off for scaladoc
+              // because scaladoc usually doesn't know the entire story
+              // and is just interested in views that are potentially applicable
+              // for instance, if we have `class C[T]` and `implicit def conv[T: Numeric](c: C[T]) = ???`
+              // then Scaladoc will give us something of type `C[T]`, and it would like to know
+              // that `conv` is potentially available under such and such conditions
+              case tree if isImplicitMethodType(tree.tpe) && !isScalaDoc => applyImplicitArgs(tree)
+              case tree => tree
+            }
           }
           else
             typed1(itree, EXPRmode, wildPt)
@@ -433,7 +449,7 @@ trait Implicits extends NscImplicits {
         if (Statistics.canEnable) Statistics.incCounter(typedImplicits)
 
         printTyping("typed implicit %s:%s, pt=%s".format(itree1, itree1.tpe, wildPt))
-        val itree2 = if (isView) (itree1: @unchecked) match { case Apply(fun, _) => fun }
+        val itree2 = if (isView) treeInfo.dissectApplied(itree1).callee
                      else adapt(itree1, EXPRmode, wildPt)
 
         printTyping("adapted implicit %s:%s to %s".format(
