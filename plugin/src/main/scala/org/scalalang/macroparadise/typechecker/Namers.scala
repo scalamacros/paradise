@@ -517,7 +517,7 @@ trait Namers {
         else newTyper(context.outer)
       ).asInstanceOf[ParadiseTyper]
       import typer.ParadiseTyperErrorGen._
-      def expand() = expandUntyped(typer, expandee)
+      def expand() = macroExpandUntyped(typer, expandee)
       def extract(expanded: Tree): List[Tree] = expanded match {
         case Block(stats, Literal(Constant(()))) => stats // ugh
         case tree => List(tree)
