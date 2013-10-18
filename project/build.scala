@@ -11,7 +11,7 @@ object build extends Build {
     resolvers += Resolver.sonatypeRepo("releases"),
     publishMavenStyle := true,
     publishArtifact in Test := false,
-    scalacOptions ++= Seq("-deprecation", "-feature"),
+    scalacOptions ++= Seq("-deprecation", "-feature", "-optimise"),
     parallelExecution in Test := false, // hello, reflection sync!!
     logBuffered := false,
     scalaHome := {
