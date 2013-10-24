@@ -1,11 +1,14 @@
 package org.scalalang.macroparadise
 package typechecker
 
-trait Macros {
+import scala.tools.nsc.typechecker.{Macros => NscMacros}
+
+trait Macros extends NscMacros {
   self: Analyzer =>
 
   import global._
   import scala.language.reflectiveCalls
+  import scala.reflect.internal.util.AbstractFileClassLoader
 
   // named like this to make sure that macro-generated exceptions are printed in a sane way
   // TODO: there's still a problem with stack traces, because they include reflective frames from meth.invoke
@@ -37,6 +40,18 @@ trait Macros {
       macroExpandWithRuntime(typer, expandee, runtime)
     } catch {
       case MacroExpansionException => None
+    }
+  }
+
+  protected override def findMacroClassLoader(): ClassLoader = {
+    val loader = super.findMacroClassLoader
+    if (globalSettings.exposeEmptyPackage) {
+      // FIXME: i wonder why ReplGlobal.findMacroClassLoader doesn't kick in
+      macroLogVerbose("macro classloader: initializing from a REPL classloader: %s".format(global.classPath.asURLs))
+      val virtualDirectory = globalSettings.outputDirs.getSingleOutput.get
+      new AbstractFileClassLoader(virtualDirectory, loader) {}
+    } else {
+      loader
     }
   }
 }

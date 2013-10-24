@@ -439,6 +439,14 @@ trait Namers {
             if (!exists(impSym)) imports = imports.tail
           }
 
+          // FIXME: repl hack. somehow imports that come from repl are doubled
+          // e.g. after `import $line7.$read.$iw.$iw.foo` you'll have another identical `import $line7.$read.$iw.$iw.foo`
+          // this is a crude workaround for the issue
+          imports match {
+            case fst :: snd :: _ if exists(impSym) && fst == snd => imports = imports.tail
+            case _ => // do nothing
+          }
+
           // STEP 3: TRY TO RESOLVE AMBIGUITIES
           if (exists(defSym) && exists(impSym)) {
             if (defSym.isDefinedInPackage &&
