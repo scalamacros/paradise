@@ -9,6 +9,14 @@ trait Macros extends NscMacros {
   import global._
   import scala.language.reflectiveCalls
   import scala.reflect.internal.util.AbstractFileClassLoader
+  import scala.reflect.internal.Mode
+
+  // NOTE: this override can be removed once https://github.com/scala/scala/pull/3134 is merged
+  override def macroExpandApply(typer: Typer, expandee: Tree, mode: Mode, pt: Type): Tree = {
+    val patchedIsMacroApplication = !expandee.isDef && expandee.symbol != null && expandee.symbol.isTermMacro && !expandee.symbol.isErroneous
+    if (!patchedIsMacroApplication) expandee
+    else super.macroExpandApply(typer, expandee, mode, pt)
+  }
 
   // named like this to make sure that macro-generated exceptions are printed in a sane way
   // TODO: there's still a problem with stack traces, because they include reflective frames from meth.invoke
