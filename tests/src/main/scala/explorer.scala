@@ -1,9 +1,9 @@
-import scala.reflect.macros.Context
+import scala.reflect.macros.WhiteboxContext
 import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
 
 object explorerMacro {
-  def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+  def impl(c: WhiteboxContext)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
     import Flag._
     def explore() = {
