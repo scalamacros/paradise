@@ -5,6 +5,7 @@ trait TreeInfo {
   self: Enrichments =>
 
   import global._
+  import definitions._
   import build.{SyntacticClassDef, SyntacticTraitDef}
 
   implicit class ParadiseTreeInfo(treeInfo: global.treeInfo.type) {
@@ -15,6 +16,13 @@ trait TreeInfo {
     def anyConstructorHasDefault(tree: ClassDef): Boolean = tree.impl.body exists {
       case DefDef(_, nme.CONSTRUCTOR, _, paramss, _, _) => mexists(paramss)(_.mods.hasDefault)
       case _                                            => false
+    }
+
+    def isMacroAnnotation(tree: ClassDef): Boolean = {
+      val clazz = tree.symbol
+      def isAnnotation = clazz isNonBottomSubClass AnnotationClass
+      def hasMacroTransformMethod = clazz.info.member(nme.macroTransform) != NoSymbol
+      clazz != null && isAnnotation && hasMacroTransformMethod
     }
 
     // TODO: no immediate idea how to write this in a sane way

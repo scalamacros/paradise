@@ -10,7 +10,6 @@ trait Enrichments extends Definitions
                      with StdNames
                      with TreeInfo
                      with StdAttachments
-                     with ReflectionUtils
                      with Mirrors
                      with Symbols {
 
