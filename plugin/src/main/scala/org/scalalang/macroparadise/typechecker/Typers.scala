@@ -15,11 +15,6 @@ trait Typers {
 
     override def namer = super.namer.asInstanceOf[ParadiseNamer]
 
-    override def reallyExists(sym: Symbol) = {
-       if (isStale(sym)) sym.setInfo(NoType)
-       (!isWeak(sym) || sym.info != NoType) && sym.exists
-    }
-
     override def typed1(tree: Tree, mode: Mode, pt: Type): Tree = {
       def typedPackageDef(pdef: PackageDef) = {
         val PackageDef(pid, stats) = pdef
