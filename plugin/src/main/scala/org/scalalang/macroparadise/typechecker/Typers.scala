@@ -13,7 +13,6 @@ trait Typers {
   trait ParadiseTyper extends Typer with ParadiseTyperContextErrors {
     import ParadiseTyperErrorGen._
 
-    private def isPastTyper = phase.id > currentRun.typerPhase.id
     override def namer = super.namer.asInstanceOf[ParadiseNamer]
 
     override def reallyExists(sym: Symbol) = {
