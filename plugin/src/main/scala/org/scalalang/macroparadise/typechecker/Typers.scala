@@ -21,14 +21,6 @@ trait Typers {
     }
 
     override def typed1(tree: Tree, mode: Mode, pt: Type): Tree = {
-      def typedAnnotated(atd: Annotated): Tree = {
-        val result = super.typed1(tree, mode, pt)
-        val anns = if (result.tpe != null) result.tpe.annotations else Nil
-        val ann = anns.headOption getOrElse UnmappableAnnotation
-        if (ann.atp.typeSymbol.isMacro) MacroAnnotationOnlyDefinitionError(atd.annot)
-        result
-      }
-
       def typedPackageDef(pdef: PackageDef) = {
         val PackageDef(pid, stats) = pdef
         val stats1 = namer.expandMacroAnnotations(pdef.stats)
@@ -39,7 +31,6 @@ trait Typers {
       if ((sym ne null) && (sym ne NoSymbol)) sym.initialize
 
       tree match {
-        case tree: Annotated  => typedAnnotated(tree)
         case tree: PackageDef => typedPackageDef(tree)
         case _                => super.typed1(tree, mode, pt)
       }
@@ -75,9 +66,7 @@ trait Typers {
             if (clazz.getAnnotation(InheritedAttr).nonEmpty) MacroAnnotationCannotBeInheritedError(clazz)
             if (!clazz.isStatic) MacroAnnotationCannotBeMemberError(clazz)
             clazz.setFlag(MACRO)
-            // TODO: can't do this until it's scala.annotation.compileTimeOnly
-            // otherwise we'll force our users to have scala-reflect.jar on classpath
-            // clazz.addAnnotation(AnnotationInfo(CompileTimeOnlyAttr.tpe, List(Literal(Constant(MacroAnnotationNotExpandedMessage)) setType StringClass.tpe), Nil))
+            clazz.addAnnotation(AnnotationInfo(CompileTimeOnlyAttr.tpe, List(Literal(Constant(MacroAnnotationNotExpandedMessage)) setType StringClass.tpe), Nil))
           }
         }
       }
