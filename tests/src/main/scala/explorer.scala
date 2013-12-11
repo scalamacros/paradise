@@ -24,11 +24,11 @@ object explorerMacro {
 }
 
 class explorer extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro explorerMacro.impl
+  def macroTransform(annottees: Any*): Any = macro explorerMacro.impl
 }
 
 package pkg {
   class explorer extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro explorerMacro.impl
+    def macroTransform(annottees: Any*): Any = macro explorerMacro.impl
   }
 }

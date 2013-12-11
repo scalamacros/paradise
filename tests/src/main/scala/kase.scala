@@ -307,11 +307,11 @@ object kaseMacro {
 }
 
 class kase extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro kaseMacro.impl
+  def macroTransform(annottees: Any*): Any = macro kaseMacro.impl
 }
 
 package pkg {
   class kase extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro kaseMacro.impl
+    def macroTransform(annottees: Any*): Any = macro kaseMacro.impl
   }
 }

@@ -35,19 +35,19 @@ object socialMacros {
 }
 
 class plusOne extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro socialMacros.plusOne
+  def macroTransform(annottees: Any*): Any = macro socialMacros.plusOne
 }
 
 class plusTwo extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro socialMacros.plusTwo
+  def macroTransform(annottees: Any*): Any = macro socialMacros.plusTwo
 }
 
 package pkg {
   class plusOne extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro socialMacros.plusOne
+    def macroTransform(annottees: Any*): Any = macro socialMacros.plusOne
   }
 
   class plusTwo extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro socialMacros.plusTwo
+    def macroTransform(annottees: Any*): Any = macro socialMacros.plusTwo
   }
 }

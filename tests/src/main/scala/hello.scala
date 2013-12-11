@@ -18,11 +18,11 @@ object helloMacro {
 }
 
 class hello extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro helloMacro.impl
+  def macroTransform(annottees: Any*): Any = macro helloMacro.impl
 }
 
 package pkg {
   class hello extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro helloMacro.impl
+    def macroTransform(annottees: Any*): Any = macro helloMacro.impl
   }
 }

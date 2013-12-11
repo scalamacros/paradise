@@ -18,11 +18,11 @@ object prettyMacro {
 }
 
 class pretty extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro prettyMacro.impl
+  def macroTransform(annottees: Any*): Any = macro prettyMacro.impl
 }
 
 package pkg {
   class pretty extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro prettyMacro.impl
+    def macroTransform(annottees: Any*): Any = macro prettyMacro.impl
   }
 }

@@ -10,31 +10,31 @@ object identityMacro {
 }
 
 class identity extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro identityMacro.impl
+  def macroTransform(annottees: Any*): Any = macro identityMacro.impl
 }
 
 class identity1 extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro identityMacro.impl
+  def macroTransform(annottees: Any*): Any = macro identityMacro.impl
 }
 
 package pkg {
   class identity extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro identityMacro.impl
+    def macroTransform(annottees: Any*): Any = macro identityMacro.impl
   }
 
   class identity2 extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro identityMacro.impl
+    def macroTransform(annottees: Any*): Any = macro identityMacro.impl
   }
 
   object Module3 {
     class identity3 extends StaticAnnotation {
-      def macroTransform(annottees: Any*) = macro identityMacro.impl
+      def macroTransform(annottees: Any*): Any = macro identityMacro.impl
     }
   }
 }
 
 object Module4 {
   class identity4 extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro identityMacro.impl
+    def macroTransform(annottees: Any*): Any = macro identityMacro.impl
   }
 }

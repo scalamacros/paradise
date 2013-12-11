@@ -19,5 +19,5 @@ object argumentativeMacro {
 }
 
 class argumentative(val x: Int, y: Int) extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro argumentativeMacro.impl
+  def macroTransform(annottees: Any*): Any = macro argumentativeMacro.impl
 }

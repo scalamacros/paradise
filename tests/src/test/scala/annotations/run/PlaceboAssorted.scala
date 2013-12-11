@@ -10,8 +10,6 @@ class PlaceboAssortedZoo {
 }
 
 class PlaceboAssorted extends FunSuite {
-  val identity = typeOf[identity].typeSymbol
-
   test("nested") {
     assert(typeOf[PlaceboAssortedZoo].declarations.sorted.map(_.toString).mkString("\n") === """
       |constructor PlaceboAssortedZoo

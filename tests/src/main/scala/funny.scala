@@ -25,11 +25,11 @@ object funnyMacro {
 }
 
 class funny extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro funnyMacro.impl
+  def macroTransform(annottees: Any*): Any = macro funnyMacro.impl
 }
 
 package pkg {
   class funny extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro funnyMacro.impl
+    def macroTransform(annottees: Any*): Any = macro funnyMacro.impl
   }
 }

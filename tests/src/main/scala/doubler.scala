@@ -24,11 +24,11 @@ object doublerMacro {
 }
 
 class doubler extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro doublerMacro.impl
+  def macroTransform(annottees: Any*): Any = macro doublerMacro.impl
 }
 
 package pkg {
   class doubler extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro doublerMacro.impl
+    def macroTransform(annottees: Any*): Any = macro doublerMacro.impl
   }
 }
