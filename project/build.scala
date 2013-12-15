@@ -6,7 +6,8 @@ object build extends Build {
     scalaVersion := "2.10.4-SNAPSHOT",
     crossVersion := CrossVersion.full,
     version := "2.0.0-SNAPSHOT",
-    organization := "org.scala-lang.plugins",
+    organization := "org.scalamacros",
+    description := "Empowers production Scala compiler with latest macro developments",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
     publishMavenStyle := true,
@@ -49,7 +50,7 @@ object build extends Build {
   }
 
   lazy val plugin = Project(
-    id   = "macro-paradise",
+    id   = "paradise",
     base = file("plugin")
   ) settings (
     sharedSettings : _*
@@ -72,18 +73,12 @@ object build extends Build {
     },
     pomIncludeRepository := { x => false },
     pomExtra := (
-      <description>Empowers production Scala compiler with latest macro developments</description>
       <url>https://github.com/scalamacros/paradise</url>
       <inceptionYear>2012</inceptionYear>
-      <organization>
-        <name>LAMP/EPFL</name>
-        <url>http://lamp.epfl.ch/</url>
-      </organization>
       <licenses>
         <license>
           <name>BSD-like</name>
-          <url>http://www.scala-lang.org/downloads/license.html
-          </url>
+          <url>http://www.scala-lang.org/downloads/license.html</url>
           <distribution>repo</distribution>
         </license>
       </licenses>
@@ -97,8 +92,9 @@ object build extends Build {
       </issueManagement>
       <developers>
         <developer>
-          <id>lamp</id>
-          <name>EPFL LAMP</name>
+          <id>xeno-by</id>
+          <name>Eugene Burmako</name>
+          <url>http://xeno.by</url>
         </developer>
       </developers>
     ),
