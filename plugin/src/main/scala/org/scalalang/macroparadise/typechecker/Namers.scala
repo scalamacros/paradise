@@ -263,6 +263,7 @@ trait Namers {
           context.scope.unlink(sym)
           sym setInfo NoType
           sym.moduleClass setInfo NoType
+          sym.removeAttachment[SymbolCompleterAttachment]
         }
       }
 
@@ -292,6 +293,8 @@ trait Namers {
 
       def maybeExpand(): Unit // TODO: should I also pass `sym` here?
     }
+
+    abstract class MaybeExpandeeCompanionCompleter(tree: Tree) extends MaybeExpandeeCompleter(tree)
 
     implicit class RichType(tpe: Type) {
       def completeOnlyExpansions(sym: Symbol) = tpe match {
@@ -356,20 +359,38 @@ trait Namers {
 
     // how do we make sure that this completer falls back to the vanilla completer if the companion ends up not expanding?
     // well, if a module symbol has a maybeExpandee companion then the last two calls to its setInfo will be one of:
-    //   * native completer for the module and then FSMEC => fallback should call native completer
+    //   * non-FSMEC completer for the module and then FSMEC => fallback should call native completer
     //   * FSMEC from enterSyntheticSym for a phantom module and then FSMEC again => fallback should do nothing
     // now it's easy to see that both are correctly handled here
     def finishSymbolMaybeExpandeeCompanion(tree: Tree, m: Symbol, c: Symbol) {
-      val oldCompleter = m.rawInfo
+      val worthBackingUp = !m.rawInfo.isInstanceOf[ParadiseNamer#MaybeExpandeeCompanionCompleter]
+      if (worthBackingUp) backupCompleter(m)
       markMaybeExpandee(m)
-      m.setInfo(new MaybeExpandeeCompleter(tree) {
+      m.setInfo(new MaybeExpandeeCompanionCompleter(tree) {
         override def kind = s"maybeExpandeeCompanionCompleter for ${m.rawname}#${m.id}"
         override def maybeExpand(): Unit = {
           c.rawInfo.completeOnlyExpansions(c)
-          if (isNotExpandable(c) && !isWeak(m)) {
-            val maybeExpandee = oldCompleter.isInstanceOf[ParadiseNamer#MaybeExpandeeCompleter]
+          // this is a very tricky part of annotation expansion
+          // because now, after deferring to our companion's judgement for a while, we have to ourselves figure out:
+          //   1) whether we should start completing on our own
+          //   2) if we should do it on our own, then how exactly
+          // 1 is easy. If our companion's expansion has destroyed us (or hasn't materialized us if we were weak)
+          // then we no longer care and we silently go into oblivion. Otherwise, we should take care of ourselves.
+          // 2 is hard, because we have two distinct situations to handle:
+          //   2a) isExpanded(c) is true, which means that our companion has just expanded
+          //   2b) isNotExpandable(c) is true, which means that our companion has just been deemed unexpandable
+          // 2a is simple, because it means that we don't have to do anything, as we've either got destroyed
+          // or we've got entered in `enterSyms(expanded)` that follows expansions.
+          // 2b is tricky, because it means that we need to fall back to the most recent non-FSMEC completer.
+          // The hardest part here is that we can't just get to the completer that was preceding `this` as m.rawInfo
+          // (otherwise we run into issue #9, for more details see history of this change). Instead we need to track m's type history.
+          val destroyedDuringExpansion = m.rawInfo == NoType
+          val failedToMaterializeDuringExpansion = isWeak(m)
+          val aliveAndKicking = !destroyedDuringExpansion && !failedToMaterializeDuringExpansion
+          if (aliveAndKicking && isNotExpandable(c)) {
+            restoreCompleter(m)
+            val maybeExpandee = m.rawInfo.isInstanceOf[ParadiseNamer#MaybeExpandeeCompleter]
             if (maybeExpandee) markMaybeExpandee(m) else markNotExpandable(m)
-            m setInfo oldCompleter
           }
         }
       })
