@@ -22,6 +22,7 @@ trait StdAttachments {
   // so we need to go from original trees/symbols to recursively expanded ones and that requires links to derived symbols
   // TODO: should be a better solution
   case class SymbolExpansionAttachment(expansion: List[Tree])
+  def hasAttachedExpansion(sym: Symbol) = sym.attachments.get[SymbolExpansionAttachment].isDefined
   def attachExpansion(sym: Symbol, trees: List[Tree]): Symbol = if (sym != null && sym != NoSymbol) sym.updateAttachment(SymbolExpansionAttachment(trees/*.map(_.duplicate)*/)) else sym
   def attachedExpansion(sym: Symbol): Option[List[Tree]] = if (sym != null && sym != NoSymbol) sym.attachments.get[SymbolExpansionAttachment].map(_.expansion/*.map(_.duplicate)*/) else None
 
