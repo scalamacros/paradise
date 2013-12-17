@@ -582,13 +582,13 @@ trait Namers {
     }
 
     def expandMacroAnnotations(stats: List[Tree]): List[Tree] = {
-      def mightExpand(stat: Tree) = stat match {
-        case stat: MemberDef => isMaybeExpandee(stat.symbol) || isExpanded(stat.symbol)
+      def mightNeedTransform(stat: Tree) = stat match {
+        case stat: MemberDef => isMaybeExpandee(stat.symbol) || hasAttachedExpansion(stat.symbol)
         case _ => false
       }
-      if (phase.id > currentRun.typerPhase.id || !stats.exists(mightExpand)) stats
+      if (phase.id > currentRun.typerPhase.id || !stats.exists(mightNeedTransform)) stats
       else stats.flatMap(stat => {
-        if (mightExpand(stat)) {
+        if (mightNeedTransform(stat)) {
           val sym = stat.symbol
           assert(sym != NoSymbol, (sym, stat))
           if (isMaybeExpandee(sym)) {
