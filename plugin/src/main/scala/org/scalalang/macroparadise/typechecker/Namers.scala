@@ -533,7 +533,9 @@ trait Namers {
         // we have to skip two contexts:
         //  1) the Template context that hosts members
         //  2) the ImplDef context that hosts type params (and just them?)
-        else if (sym.owner.isClass) newTyper(context.outer.outer)
+        // upd. actually, i don't think we should skip the second context
+        // that doesn't buy us absolutely anything wrt robustness
+        else if (sym.owner.isClass) newTyper(context.outer)
         // expanding at block level => only allow to see outside of the block
         else newTyper(context.outer)
       ).asInstanceOf[ParadiseTyper]
