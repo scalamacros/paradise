@@ -10,22 +10,7 @@ class Plugin(val global: Global) extends NscPlugin with AnalyzerPlugins {
 
   val name = "macroparadise"
   val description = "Empowers production Scala compiler with latest macro developments"
-  val components = List[NscPluginComponent](PluginComponent)
+  val components = Nil
   analyzer.addAnalyzerPlugin(AnalyzerPlugin)
   analyzer.addMacroPlugin(MacroPlugin)
-
-  object PluginComponent extends NscPluginComponent {
-    val global = Plugin.this.global
-    import global._
-
-    override val runsAfter = List("parser")
-    val phaseName = "macroparadise"
-    override val description = "let our powers combine"
-
-    override def newPhase(prev: Phase): StdPhase = new StdPhase(prev) {
-      override def apply(unit: CompilationUnit) {
-        // do nothing: everything's already hijacked
-      }
-    }
-  }
 }
