@@ -1,4 +1,4 @@
-import scala.reflect.macros.WhiteboxContext
+import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
 import scala.language.postfixOps
 import scala.annotation.StaticAnnotation
@@ -14,7 +14,7 @@ object kaseMacro {
   // 6) No specialized hashcode implementation for primitive fields (I didn't have time to go into all the details of codegen)
   // 7) No referential transparency for methods like apply or copy that are injected into the companion, but should use kase class definition scope
 
-  abstract class kaseHelper[C <: WhiteboxContext](val c: C) {
+  abstract class kaseHelper[C <: Context](val c: C) {
     import c.universe._
     import definitions._
     import c.universe.{Flag => PublicFlags}
@@ -63,7 +63,7 @@ object kaseMacro {
     def expand(annottees: List[c.Tree]): List[c.Tree]
   }
 
-  class kaseClassHelper[C <: WhiteboxContext](override val c: C) extends kaseHelper(c) {
+  class kaseClassHelper[C <: Context](override val c: C) extends kaseHelper(c) {
     import c.universe._
     import definitions._
 
@@ -247,7 +247,7 @@ object kaseMacro {
     }
   }
 
-  class kaseObjectHelper[C <: WhiteboxContext](override val c: C) extends kaseHelper(c) {
+  class kaseObjectHelper[C <: Context](override val c: C) extends kaseHelper(c) {
     import c.universe._
     import definitions._
 
@@ -293,7 +293,7 @@ object kaseMacro {
     }
   }
 
-  def impl(c: WhiteboxContext)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+  def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
     val helper = {
       annottees.head.tree match {

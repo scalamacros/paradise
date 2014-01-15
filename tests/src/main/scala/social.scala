@@ -1,9 +1,9 @@
-import scala.reflect.macros.WhiteboxContext
+import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
 
 object socialMacros {
-  def plusOne(c: WhiteboxContext)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+  def plusOne(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
     import Flag._
     val result = {
@@ -19,7 +19,7 @@ object socialMacros {
     }
     c.Expr[Any](Block(result, Literal(Constant(()))))
   }
-  def plusTwo(c: WhiteboxContext)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+  def plusTwo(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
     import Flag._
     val result = {
