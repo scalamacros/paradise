@@ -5,6 +5,7 @@ import Arbitrary._
 
 import scala.language.implicitConversions
 import scala.reflect.api._
+import org.scalalang.quasiquotes._
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.Flag._
 

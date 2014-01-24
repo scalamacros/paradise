@@ -1,8 +1,6 @@
 package org.scalalang.macroparadise
 package reflect
 
-import scala.reflect.api.QuasiquoteCompatV2
-
 trait Trees {
   self: Enrichments =>
 
@@ -15,5 +13,5 @@ trait Trees {
     duplicator.transform(tree)
   }
 
-  lazy val compat = QuasiquoteCompatV2(self.global)
+  lazy val compat = org.scalalang.quasiquotes.QuasiquoteCompat(self.global)
 }
