@@ -3,7 +3,7 @@ import scala.reflect.runtime.universe.definitions._
 import scala.reflect.runtime.universe.Flag._
 import scala.reflect.runtime.currentMirror
 import scala.reflect.api.Universe
-import org.scalalang.quasiquotes.Liftable
+import org.scalamacros.quasiquotes.Liftable
 import scala.reflect.macros.TypecheckException
 import scala.tools.reflect.{ToolBox, ToolBoxError}
 
