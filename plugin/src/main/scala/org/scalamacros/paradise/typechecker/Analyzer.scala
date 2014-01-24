@@ -1,8 +1,8 @@
-package org.scalalang.macroparadise
+package org.scalamacros.paradise
 package typechecker
 
 import scala.tools.nsc.typechecker.{Analyzer => NscAnalyzer}
-import org.scalalang.macroparadise.reflect.Enrichments
+import org.scalamacros.paradise.reflect.Enrichments
 
 trait Analyzer extends NscAnalyzer
                   with Namers

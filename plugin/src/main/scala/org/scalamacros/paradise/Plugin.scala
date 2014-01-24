@@ -1,9 +1,9 @@
-package org.scalalang.macroparadise
+package org.scalamacros.paradise
 
 import scala.tools.nsc.{Global, Phase, SubComponent}
 import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
 import scala.collection.{mutable, immutable}
-import org.scalalang.macroparadise.typechecker.Analyzer
+import org.scalamacros.paradise.typechecker.Analyzer
 
 class Plugin(val global: Global) extends NscPlugin {
   import global._
@@ -48,7 +48,7 @@ class Plugin(val global: Global) extends NscPlugin {
   // replace Global.analyzer to customize namer and typer (step 3 of 3)
   // now let's take a look at what we couldn't replace during steps 1 and 2
   // here's what gets printed if add the following line to the standard Namer and Typer classes
-  // if (!getClass.getName.startsWith("org.scalalang.macroparadise")) println(getClass.getName)
+  // if (!getClass.getName.startsWith("org.scalamacros.paradise")) println(getClass.getName)
   //
   //    scala.tools.nsc.Global$typer$
   //    scala.tools.nsc.typechecker.Implicits$ImplicitSearch
