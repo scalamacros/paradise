@@ -1,7 +1,7 @@
-package org.scalalang.macroparadise
+package org.scalamacros.paradise
 package typechecker
 
-import org.scalalang.macroparadise.reflect.Enrichments
+import org.scalamacros.paradise.reflect.Enrichments
 
 trait AnalyzerPlugins extends Compilers
                         with Namers

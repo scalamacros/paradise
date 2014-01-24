@@ -1,4 +1,4 @@
-package org.scalalang.macroparadise
+package org.scalamacros.paradise
 
 object Settings {
   class Setting[T](get: () => T, set: T => Unit) {

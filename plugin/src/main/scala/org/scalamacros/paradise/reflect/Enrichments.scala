@@ -1,10 +1,10 @@
-package org.scalalang.macroparadise
+package org.scalamacros.paradise
 package reflect
 
 import scala.language.implicitConversions
 import scala.tools.nsc.{Global => NscGlobal}
 import scala.tools.nsc.{Settings => NscSettings}
-import org.scalalang.macroparadise.{Settings => ParadiseSettings}
+import org.scalamacros.paradise.{Settings => ParadiseSettings}
 
 trait Enrichments extends Definitions
                      with StdNames
