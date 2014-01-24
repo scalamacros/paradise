@@ -14,7 +14,7 @@ abstract class Quasiquotes extends Parsers
   import c.universe._
   import paradiseDefinitions._
 
-  def debug(msg: String): Unit =
+  def debug(msg: => String): Unit =
     if (settings.Yquasiquotedebug.value) println(msg)
 
   lazy val (universe: Tree, args, parts, parse, reify) = c.macroApplication match {
