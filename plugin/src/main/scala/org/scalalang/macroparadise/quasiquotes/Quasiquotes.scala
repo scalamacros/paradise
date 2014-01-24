@@ -12,6 +12,7 @@ abstract class Quasiquotes extends Parsers
   val c: Context
   val global: c.universe.type = c.universe
   import c.universe._
+  import paradiseDefinitions._
 
   def debug(msg: => String): Unit =
     if (settings.Yquasiquotedebug.value) println(msg)
@@ -43,6 +44,14 @@ abstract class Quasiquotes extends Parsers
   lazy val universeTypes = new paradiseDefinitions.UniverseDependentTypes(universe)
 
   def expandQuasiquote = {
+    if (QuasiquoteCompatModule == NoSymbol) {
+      val message =
+        "Quasiquotes in macro paradise for Scala 2.10 now require a dependency on a supporting library. " +
+        "Add the following line to your SBT build: " +
+        """`libraryDependencies += "org.scalamacros" % "quasiquotes" % "2.0.0-SNAPSHOT" cross CrossVersion.full`"""
+      c.abort(c.enclosingPosition, message)
+    }
+
     debug(s"\ncode to parse=\n$code\n")
     val tree = parse(code)
     debug(s"parsed tree\n=${tree}\n=${showRaw(tree)}\n")

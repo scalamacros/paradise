@@ -1,11 +1,9 @@
-package scala.reflect
-package api
+package org.scalalang.quasiquotes
 
-// QuasiquoteCompat is sort of semi-synthetic
-// therefore also keep an eye on reflect/Definitions.scala where it's materialized
+import scala.reflect.api._
 
-object QuasiquoteCompatV2 { def apply(u0: Universe): QuasiquoteCompatV2 { val u: u0.type } = new { val u: u0.type = u0 } with QuasiquoteCompatV2 }
-trait QuasiquoteCompatV2 {
+object QuasiquoteCompat { def apply(u0: Universe): QuasiquoteCompat { val u: u0.type } = new { val u: u0.type = u0 } with QuasiquoteCompat }
+trait QuasiquoteCompat {
   val u: Universe
   import u._, definitions._, Flag._
 

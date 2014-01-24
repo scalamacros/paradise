@@ -1,8 +1,6 @@
-package scala.reflect
-package api
+package org.scalalang.quasiquotes
 
-// Liftable is sort of semi-synthetic
-// therefore also keep an eye on reflect/Definitions.scala where it's materialized
+import scala.reflect.api._
 
 trait Liftable[T] {
   def apply(universe: Universe, value: T): universe.Tree

@@ -59,7 +59,7 @@ self =>
   val global: NscGlobal
   import global._
 
-  val compat = scala.reflect.api.QuasiquoteCompatV2(global)
+  val compat = org.scalalang.quasiquotes.QuasiquoteCompat(global)
   import compat.RichTree
 
   case class OpInfo(operand: Tree, operator: Name, offset: Offset)

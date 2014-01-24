@@ -57,37 +57,8 @@ trait Definitions {
       }
     }
 
-    def ensureEmbedded(fullName: Name, resourcePath: String): Symbol = {
-      val iof = fullName.lastIndexOf('.')
-      val ownerName = fullName.subName(0, iof)
-      val name = fullName.subName(iof + 1, fullName.length)
-      val owner =
-        try staticPackage(ownerName.toString).moduleClass
-        catch { case _: MissingRequirementError => NoSymbol }
-      if (owner != NoSymbol) {
-        def related = List(name.toTermName, name.toTypeName).map(owner.info.decl(_)).filter(_ != NoSymbol)
-        def existing = related.find(_.name == name).getOrElse(NoSymbol)
-        def embedded = existing.suchThat(sym => sym.sourceFile != null || sym.rawInfo.isInstanceOf[loaders.SourcefileLoader])
-        embedded orElse {
-          val completer = new loaders.SourcefileLoader(EmbeddedFile(resourcePath))
-          if (existing != NoSymbol) related.foreach(_.setInfo(completer))
-          else loaders.enterClassAndModule(owner, name.toString, completer)
-          embedded orElse installationFailure()
-        }
-      } else {
-        NoSymbol
-      }
-    }
-
-    final val QuasiquoteCompatBase = "scala.reflect.api.QuasiquoteCompat"
-    final val QuasiquoteCompatVersion = "V2"
-    lazy val QuasiquoteCompatModule = ensureEmbedded(newTermName(QuasiquoteCompatBase + QuasiquoteCompatVersion), "/QuasiquoteCompat.scala")
-
-    // Liftable isn't versioned at the moment, because it's a part of the public API that should be compatible with 2.11.
-    // Therefore I wouldn't like to bother users with LiftableV1 that will have to be changed back to Liftable when migrating to 2.11.
-    // It doesn't look like anything might change for Liftable, so this shouldn't be a problem.
-    // Though in an extreme case of having to apply changes when backporting stuff from 2.11.0-SNAPSHOT, we can always do the renaming.
-    lazy val LiftableClass = ensureEmbedded(newTypeName("scala.reflect.api.Liftable"), "/Liftable.scala")
+    lazy val QuasiquoteCompatModule = getModuleIfDefined("org.scalalang.quasiquotes.QuasiquoteCompat")
+    lazy val LiftableClass = getClassIfDefined("org.scalalang.quasiquotes.Liftable")
 
     class UniverseDependentTypes(universe: Tree) {
       lazy val universeType = universe.tpe
@@ -124,8 +95,6 @@ trait Definitions {
 
     def init() = {
       QuasiquoteMacros
-      LiftableClass // shouldn't be on-demand because, unlike QuasiquoteCompatModule,
-                    // Liftable is something programmers are supposed to use explicitly
     }
   }
 }

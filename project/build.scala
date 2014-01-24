@@ -22,46 +22,12 @@ object build extends Build {
         Some(file(scalaHome))
       } else None
     }
-  )
-
-  def loadCredentials(): List[Credentials] = {
-    val mavenSettingsFile = System.getProperty("maven.settings.file")
-    if (mavenSettingsFile != null) {
-      println("Loading Sonatype credentials from " + mavenSettingsFile)
-      try {
-        import scala.xml._
-        val settings = XML.loadFile(mavenSettingsFile)
-        def readServerConfig(key: String) = (settings \\ "settings" \\ "servers" \\ "server" \\ key).head.text
-        List(Credentials(
-          "Sonatype Nexus Repository Manager",
-          "oss.sonatype.org",
-          readServerConfig("username"),
-          readServerConfig("password")
-        ))
-      } catch {
-        case ex: Exception =>
-          println("Failed to load Maven settings from " + mavenSettingsFile + ": " + ex)
-          Nil
-      }
-    } else {
-      // println("Sonatype credentials cannot be loaded: -Dmaven.settings.file is not specified.")
-      Nil
-    }
-  }
-
-  lazy val plugin = Project(
-    id   = "paradise",
-    base = file("plugin")
-  ) settings (
-    sharedSettings : _*
-  ) settings (
-    resourceDirectory in Compile <<= baseDirectory(_ / "src" / "main" / "scala" / "org" / "scalalang" / "macroparadise" / "embedded"),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-library" % _),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
     // TODO: how to I make this recursion work?
     // run <<= run in Compile in sandbox,
     // test <<= test in Test in tests
+  )
+
+  lazy val publishableSettings = sharedSettings ++ Seq(
     publishMavenStyle := true,
     publishArtifact in Test := false,
     publishTo <<= version { v: String =>
@@ -99,6 +65,59 @@ object build extends Build {
       </developers>
     ),
     credentials ++= loadCredentials()
+  )
+
+  def loadCredentials(): List[Credentials] = {
+    val mavenSettingsFile = System.getProperty("maven.settings.file")
+    if (mavenSettingsFile != null) {
+      println("Loading Sonatype credentials from " + mavenSettingsFile)
+      try {
+        import scala.xml._
+        val settings = XML.loadFile(mavenSettingsFile)
+        def readServerConfig(key: String) = (settings \\ "settings" \\ "servers" \\ "server" \\ key).head.text
+        List(Credentials(
+          "Sonatype Nexus Repository Manager",
+          "oss.sonatype.org",
+          readServerConfig("username"),
+          readServerConfig("password")
+        ))
+      } catch {
+        case ex: Exception =>
+          println("Failed to load Maven settings from " + mavenSettingsFile + ": " + ex)
+          Nil
+      }
+    } else {
+      // println("Sonatype credentials cannot be loaded: -Dmaven.settings.file is not specified.")
+      Nil
+    }
+  }
+
+  lazy val quasiquotes = Project(
+    id   = "quasiquotes",
+    base = file("quasiquotes")
+  ) settings (
+    publishableSettings : _*
+  ) settings (
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _)
+  )
+
+  lazy val plugin = Project(
+    id   = "paradise",
+    base = file("plugin")
+  ) settings (
+    publishableSettings : _*
+  ) settings (
+    resourceDirectory in Compile <<= baseDirectory(_ / "src" / "main" / "scala" / "org" / "scalalang" / "macroparadise" / "embedded"),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
+    Keys.`package` := {
+      val _ = (Keys.`package` in Compile in quasiquotes).value
+      (Keys.`package` in Compile).value
+    },
+    publish := {
+      val _ = (publish in quasiquotes).value
+      publish.value
+    }
   )
 
   lazy val usePluginSettings = Seq(
@@ -143,5 +162,5 @@ object build extends Build {
     scalacOptions ++= Seq()
     // scalacOptions ++= Seq("-Xprint:typer")
     // scalacOptions ++= Seq("-Xlog-implicits")
-  )
+  ) dependsOn (quasiquotes)
 }
