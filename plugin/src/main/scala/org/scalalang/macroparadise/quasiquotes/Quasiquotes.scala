@@ -13,7 +13,7 @@ abstract class Quasiquotes extends Parsers
   val global: c.universe.type = c.universe
   import c.universe._
 
-  def debug(msg: String): Unit =
+  def debug(msg: => String): Unit =
     if (settings.Yquasiquotedebug.value) println(msg)
 
   lazy val (universe: Tree, args, parts, parse, reify) = c.macroApplication match {
