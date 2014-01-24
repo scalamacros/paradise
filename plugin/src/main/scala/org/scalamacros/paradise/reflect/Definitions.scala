@@ -1,4 +1,4 @@
-package org.scalalang.macroparadise
+package org.scalamacros.paradise
 package reflect
 
 import scala.reflect.internal.Flags._

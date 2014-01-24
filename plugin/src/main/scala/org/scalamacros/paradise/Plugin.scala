@@ -1,9 +1,9 @@
-package org.scalalang.macroparadise
+package org.scalamacros.paradise
 
 import scala.tools.nsc.{Global, Phase, SubComponent}
 import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
 import scala.collection.{mutable, immutable}
-import org.scalalang.macroparadise.typechecker.AnalyzerPlugins
+import org.scalamacros.paradise.typechecker.AnalyzerPlugins
 
 class Plugin(val global: Global) extends NscPlugin with AnalyzerPlugins {
   import global._
