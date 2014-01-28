@@ -48,7 +48,7 @@ abstract class Quasiquotes extends Parsers
       val message =
         "Quasiquotes in macro paradise for Scala 2.10 now require a dependency on a supporting library. " +
         "Add the following line to your SBT build: " +
-        """`libraryDependencies += "org.scalamacros" % "quasiquotes" % "2.0.0-SNAPSHOT" cross CrossVersion.full`"""
+        """`libraryDependencies += "org.scalamacros" %% "quasiquotes" % "2.0.0-SNAPSHOT" cross CrossVersion.full`"""
       c.abort(c.enclosingPosition, message)
     }
 
