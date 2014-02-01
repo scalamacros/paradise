@@ -529,6 +529,10 @@ trait Namers {
       val companion = if (original.isInstanceOf[ClassDef]) companionSymbolOf(sym, context) else NoSymbol
       val wasWeak = isWeak(companion)
       val wasTransient = companion == NoSymbol || companion.isSynthetic
+      def rollThroughImports(context: Context): Context = {
+        if (context.isInstanceOf[ImportContext]) rollThroughImports(context.outer)
+        else context
+      }
       val typer = (
         // expanding at top level => allow the macro to see everything
         if (sym.isTopLevel) newTyper(context)
@@ -538,9 +542,9 @@ trait Namers {
         //  2) the ImplDef context that hosts type params (and just them?)
         // upd. actually, i don't think we should skip the second context
         // that doesn't buy us absolutely anything wrt robustness
-        else if (sym.owner.isClass) newTyper(context.outer)
+        else if (sym.owner.isClass) newTyper(rollThroughImports(context).outer)
         // expanding at block level => only allow to see outside of the block
-        else newTyper(context.outer)
+        else newTyper(rollThroughImports(context).outer)
       ).asInstanceOf[ParadiseTyper]
       import typer.ParadiseTyperErrorGen._
       def expand() = expandUntyped(typer, expandee)
