@@ -103,7 +103,7 @@ trait Namers {
         case tree @ ModuleDef(mods, name, _) =>
           var m: Symbol = context.scope lookupAll name find (_.isModule) getOrElse NoSymbol
           val moduleFlags = mods.flags | MODULE
-          if (m.isModule && !m.isPackage && (currentRun.canRedefine(m) || m.isSynthetic || isExpanded(m))) {
+          if (m.isModule && !m.hasPackageFlag && (currentRun.canRedefine(m) || m.isSynthetic || isExpanded(m))) {
             // This code accounts for the way the package objects found in the classpath are opened up
             // early by the completer of the package itself. If the `packageobjects` phase then finds
             // the same package object in sources, we have to clean the slate and remove package object
@@ -128,7 +128,7 @@ trait Namers {
             setPrivateWithin(tree, m.moduleClass)
           }
           m.moduleClass setInfo namerOf(m).moduleClassTypeCompleter(tree)
-          if (m.isTopLevel && !m.isPackage) {
+          if (m.isTopLevel && !m.hasPackageFlag) {
             m.moduleClass.associatedFile = contextFile
             currentRun.symSource(m) = m.moduleClass.sourceFile
             registerTopLevelSym(m)

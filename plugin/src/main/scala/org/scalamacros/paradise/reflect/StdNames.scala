@@ -6,7 +6,7 @@ trait StdNames {
   import global._
 
   implicit class ParadiseNme(nme: global.nme.type) {
-    val annottees: TermName          = "annottees"
-    val macroTransform: TermName     = "macroTransform"
+    val annottees          = TermName("annottees")
+    val macroTransform     = TermName("macroTransform")
   }
 }
