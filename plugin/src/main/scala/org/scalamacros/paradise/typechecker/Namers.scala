@@ -50,10 +50,13 @@ trait Namers {
           case mdef: MemberDef    => enterInScope(setPrivateWithin(mdef, createMemberSymbol(mdef, mdef.name, mask)))
           case _                  => abort("Unexpected tree: " + tree)
         }
-        sym.name.toTermName match {
+        if (isPastTyper) sym.name.toTermName match {
           case nme.IMPORT | nme.OUTER | nme.ANON_CLASS_NAME | nme.ANON_FUN_NAME | nme.CONSTRUCTOR => ()
           case _                                                                                  =>
-            log("[+symbol] " + sym.debugLocationString)
+            tree match {
+              case md: DefDef => log("[+symbol] " + sym.debugLocationString)
+              case _          =>
+            }
         }
         tree.symbol = sym
         sym
@@ -101,8 +104,10 @@ trait Namers {
           }
           clazz
         case tree @ ModuleDef(mods, name, _) =>
-          var m: Symbol = context.scope lookupAll name find (_.isModule) getOrElse NoSymbol
+          var m: Symbol = context.scope lookupModule name
           val moduleFlags = mods.flags | MODULE
+          // TODO: inCurrentScope(m) check that's present in vanilla Namer is omitted here
+          // this fixes SI-3772, but may break something else - I didn't have time to look into that
           if (m.isModule && !m.hasPackageFlag && (currentRun.canRedefine(m) || m.isSynthetic || isExpanded(m))) {
             // This code accounts for the way the package objects found in the classpath are opened up
             // early by the completer of the package itself. If the `packageobjects` phase then finds
@@ -117,7 +122,6 @@ trait Namers {
             }
             updatePosFlags(m, tree.pos, moduleFlags)
             setPrivateWithin(tree, m)
-            // why don't we update moduleClass' flags?
             m.moduleClass andAlso (setPrivateWithin(tree, _))
             context.unit.synthetics -= m
             tree.symbol = m
@@ -252,11 +256,7 @@ trait Namers {
             tree.symbol setInfo NoType
             enterGetterSetter(tree)
           }
-          // When java enums are read from bytecode, they are known to have
-          // constant types by the jvm flag and assigned accordingly.  When
-          // they are read from source, the java parser marks them with the
-          // STABLE flag, and now we receive that signal.
-          if (tree.symbol hasAllFlags STABLE | JAVA)
+          if (isEnumConstant(tree))
             tree.symbol setInfo ConstantType(Constant(tree.symbol))
         case tree @ DefDef(_, nme.CONSTRUCTOR, _, _, _, _) =>
           sym setInfo completerOf(tree)
