@@ -104,6 +104,17 @@ trait Namers {
           var m: Symbol = context.scope lookupAll name find (_.isModule) getOrElse NoSymbol
           val moduleFlags = mods.flags | MODULE
           if (m.isModule && !m.isPackage && (currentRun.canRedefine(m) || m.isSynthetic || isExpanded(m))) {
+            // This code accounts for the way the package objects found in the classpath are opened up
+            // early by the completer of the package itself. If the `packageobjects` phase then finds
+            // the same package object in sources, we have to clean the slate and remove package object
+            // members from the package class.
+            //
+            // TODO SI-4695 Pursue the approach in https://github.com/scala/scala/pull/2789 that avoids
+            //      opening up the package object on the classpath at all if one exists in source.
+            if (m.isPackageObject) {
+              val packageScope = m.enclosingPackageClass.rawInfo.decls
+              packageScope.filter(_.owner != m.enclosingPackageClass).toList.foreach(packageScope unlink _)
+            }
             updatePosFlags(m, tree.pos, moduleFlags)
             setPrivateWithin(tree, m)
             // why don't we update moduleClass' flags?
