@@ -13,5 +13,5 @@ trait Trees {
     duplicator.transform(tree)
   }
 
-  lazy val compat = org.scalamacros.quasiquotes.QuasiquoteCompat(self.global)
+  lazy val compat = org.scalamacros.quasiquotes.QuasiquoteCompat[self.global.type](self.global)
 }

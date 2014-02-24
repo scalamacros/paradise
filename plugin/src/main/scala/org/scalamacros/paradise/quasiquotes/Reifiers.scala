@@ -261,9 +261,10 @@ trait Reifiers { self: Quasiquotes =>
     // because we're just a compiler plugin, not a fork of scalac
     // therefore we have to externalize the calls to new methods
     def mirrorCompatCall(name: TermName, args: Tree*): Tree =
-      if (isReifyingExpressions)
-        Apply(Select(Apply(Select(termPath(QuasiquoteCompatModule.fullName), nme.apply), List(universe)), name), args.toList)
-      else {
+      if (isReifyingExpressions) {
+        val apply = TypeApply(Select(termPath(QuasiquoteCompatModule.fullName), nme.apply), List(SingletonTypeTree(universe)))
+        Apply(Select(Apply(apply, List(universe)), name), args.toList)
+      } else {
         // NOTE: density of workarounds per line of code is rapidly ramping up!
         // here we force the compiler into supporting path-dependent extractors
         // by manually applying the first argument list, i.e. the one that contains the universe,
@@ -271,8 +272,10 @@ trait Reifiers { self: Quasiquotes =>
         // if we didn't set the type, then typedApply for the first arglist would get confused and fai
         val compatModule = QuasiquoteCompatModule.moduleClass
         val compatApply = compatModule.info.decl(nme.apply)
-        val apply = gen.mkAttributedRef(compatModule.tpe, compatApply)
-        val compatInstance = Apply(apply, List(universe)) setType apply.tpe.resultType(List(universe.tpe))
+        val applyWithoutTargs = gen.mkAttributedRef(compatModule.tpe, compatApply)
+        val targs = List(SingletonTypeTree(universe) setType universe.tpe)
+        val applyWithTargs = TypeApply(applyWithoutTargs, targs) setType appliedType(applyWithoutTargs.tpe, List(universe.tpe))
+        val compatInstance = Apply(applyWithTargs, List(universe)) setType applyWithTargs.tpe.resultType(List(universe.tpe))
         Apply(Select(compatInstance, name), args.toList)
       }
 
