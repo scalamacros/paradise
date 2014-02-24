@@ -2,7 +2,7 @@ package org.scalamacros.quasiquotes
 
 import scala.reflect.api._
 
-object QuasiquoteCompat { def apply(u0: Universe): QuasiquoteCompat { val u: u0.type } = new { val u: u0.type = u0 } with QuasiquoteCompat }
+object QuasiquoteCompat { def apply[U <: scala.reflect.api.Universe with Singleton](u0: U): QuasiquoteCompat { val u: u0.type } = new { val u: u0.type = u0 } with QuasiquoteCompat }
 trait QuasiquoteCompat {
   val u: Universe
   import u._, definitions._, Flag._
