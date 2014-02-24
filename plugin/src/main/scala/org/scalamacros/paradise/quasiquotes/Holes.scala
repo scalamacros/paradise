@@ -84,7 +84,7 @@ trait Holes { self: Quasiquotes =>
         // NOTE: hardcoded universe-dependent StandardLiftables
         // because I see absolutely no way to provide them outside the reflection cake
         // okay, I could inject them as macros into ApiUniverseClass, but that's just too much
-        if (tpe <:< exprType) Some(tree => Select(tree, nme.tree))
+        if (tpe <:< exprType) Some(tree => TypeApply(Select(Select(tree, nme.tree), nme.asInstanceOf_), List(TypeTree(treeType))))
         else if (tpe <:< constantType) Some(tree => Apply(Select(universe, nme.Literal), List(tree)))
         else if (tpe <:< typeType) Some(tree => Apply(Select(universe, nme.TypeTree), List(tree)))
         else if (tpe <:< weakTypeTagType) Some(tree => Apply(Select(universe, nme.TypeTree), List(Select(tree, nme.tpe))))

@@ -40,7 +40,7 @@ trait Reifiers { self: Quasiquotes =>
       reifyTreeSyntactically(tree)
 
     def reifyTreePlaceholder(tree: Tree): Tree = tree match {
-      case Placeholder(tree, TreeLocation(_), _) if isReifyingExpressions => tree
+      case Placeholder(tree, TreeLocation(_), _) if isReifyingExpressions => TypeApply(Select(tree, nme.asInstanceOf_), List(TypeTree(if (tree.tpe != null) universeType.memberType(tree.tpe.typeSymbol) else treeType)))
       case Placeholder(tree, _, NoDot) if isReifyingPatterns => tree
       case Placeholder(tree, _, card @ Dot()) => c.abort(tree.pos, s"Can't $action with $card here")
       case TuplePlaceholder(args) => reifyTuple(args)
