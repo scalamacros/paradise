@@ -1312,8 +1312,8 @@ self =>
           newLinesOpt()
           val thenp = expr()
           val elsep = if (in.token == ELSE) { in.nextToken(); expr() }
-          else Literal(Constant())
-          If(cond, thenp, elsep)
+                      else Literal(Constant())
+          makeIfThenElse(cond, thenp, elsep)
         }
         parseIf
       case TRY =>
@@ -1348,19 +1348,19 @@ self =>
             val cond = condExpr()
             newLinesOpt()
             val body = expr()
-            makeWhile(start, cond, body)
+            makeWhileDo(start, cond, body)
           }
         }
         parseWhile
       case DO =>
         def parseDo = {
           atPos(in.skipToken()) {
-            val lname: Name = freshTermName(nme.DO_WHILE_PREFIX)
+            // val lname: Name = freshTermName(nme.DO_WHILE_PREFIX)
             val body = expr()
             if (isStatSep) in.nextToken()
             accept(WHILE)
             val cond = condExpr()
-            makeDoWhile(lname.toTermName, body, cond)
+            makeDoWhile(body, cond)
           }
         }
         parseDo
@@ -1386,7 +1386,7 @@ self =>
       case RETURN =>
         def parseReturn =
           atPos(in.skipToken()) {
-            Return(if (isExprIntro) expr() else Literal(Constant()))
+            makeReturn(if (isExprIntro) expr() else Literal(Constant()))
           }
         parseReturn
       case THROW =>
@@ -1610,7 +1610,7 @@ self =>
               case _ =>
                 stripParens(t)
             }
-            Apply(sel, argumentExprs())
+            makeApply(sel, argumentExprs())
           }
           simpleExprRest(app, canApply = true)
         case USCORE =>
@@ -1631,7 +1631,7 @@ self =>
       def args(): List[Tree] = commaSeparated {
         val maybeNamed = isIdent
         expr() match {
-          case a @ Assign(id, rhs) if maybeNamed =>
+          case a @ LiftedAssign(id, rhs) if maybeNamed =>
             atPos(a.pos) { AssignOrNamedArg(id, rhs) }
           case e => e
         }
@@ -2470,6 +2470,8 @@ self =>
             in.nextToken()
             newmods = newmods | Flags.DEFAULTINIT
             EmptyTree
+          } else if (newmods hasFlag Flags.MUTABLE) {
+            makeNewVar(expr())
           } else {
             expr()
           }
