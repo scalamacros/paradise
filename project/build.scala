@@ -3,10 +3,11 @@ import Keys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.10.3",
+    scalaVersion := "2.10.2-RC1",
     crossVersion := CrossVersion.full,
     version := "2.0.0-SNAPSHOT",
     organization := "org.scalamacros",
+    scalaOrganization := "org.scala-lang.virtualized",
     description := "Empowers production Scala compiler with latest macro developments",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
@@ -98,18 +99,18 @@ object build extends Build {
   ) settings (
     publishableSettings : _*
   ) settings (
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _)
+    libraryDependencies <+= (scalaVersion)("org.scala-lang.virtualized" % "scala-reflect" % _)
   )
 
   lazy val plugin = Project(
-    id   = "paradise",
+    id   = "paradisevirt",
     base = file("plugin")
   ) settings (
     publishableSettings : _*
   ) settings (
     resourceDirectory in Compile <<= baseDirectory(_ / "src" / "main" / "scala" / "org" / "scalamacros" / "paradise" / "embedded"),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang.virtualized" % "scala-reflect" % _),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang.virtualized" % "scala-compiler" % _),
     Keys.`package` := {
       val _ = (Keys.`package` in Compile in quasiquotes).value
       (Keys.`package` in Compile).value
@@ -148,8 +149,8 @@ object build extends Build {
   ) settings (
     sharedSettings ++ usePluginSettings: _*
   ) settings (
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang.virtualized" % "scala-reflect" % _),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang.virtualized" % "scala-compiler" % _),
     libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test",
     libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.10.1" % "test",
     publishArtifact in Compile := false,
