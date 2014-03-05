@@ -1093,13 +1093,31 @@ trait Implicits extends NscImplicits {
               // a manifest should have been found by normal searchImplicit
               EmptyTree
             }
-          case RefinedType(parents, decls) => // !!! not yet: if !full || decls.isEmpty =>
-            // refinement is not generated yet
-            if (hasLength(parents, 1)) findManifest(parents.head)
+          case RefinedType(parents, decls) =>
+            // refinement only generated if type has only one parent
+            if (hasLength(parents, 1)) {
+              val entries: List[Symbol] = (decls.toList filter { entry =>
+                !entry.isConstructor && entry.allOverriddenSymbols.isEmpty && !entry.isPrivate
+              })
+              val names: List[String] = entries map { _.name.toString }
+              val namesTrees: List[Tree] = names map { name => Literal(Constant(name)) }
+              val namesTree: Tree = Apply(Select(gen.mkAttributedRef(ListModule), nme.apply), namesTrees)
+              val maniTrees: List[Tree] = entries map { sym =>
+                val tp = sym.tpe match {
+                  case NullaryMethodType(tp) => tp
+                  case tp => tp
+                }
+                findManifest(tp)
+              }
+              val maniTree: Tree = Apply(Select(gen.mkAttributedRef(ListModule), nme.apply), maniTrees)
+              manifestFactoryCall("refinedType", tp, findManifest(parents.head), namesTree, maniTree)
+            }
             else if (full) manifestFactoryCall("intersectionType", tp, parents map findSubManifest: _*)
             else mot(erasure.intersectionDominator(parents), from, to)
           case ExistentialType(tparams, result) =>
             mot(tp1.skolemizeExistential, from, to)
+          case NullaryMethodType(result) => // TODO: necessary?
+            mot(result, from, to)
           case _ =>
             EmptyTree
           }
@@ -1182,6 +1200,9 @@ trait Implicits extends NscImplicits {
 
       var result = searchImplicit(context.implicitss, true)
 
+      // invoke update on implicitly found SourceContext
+      var updateSourceContext = true
+
       if (result.isFailure) {
         if (Statistics.canEnable) Statistics.stopTimer(inscopeFailNanos, failstart)
       } else {
@@ -1201,6 +1222,14 @@ trait Implicits extends NscImplicits {
         if (result.isFailure) result = searchImplicit(implicitsOfExpectedType, false)
 
         if (result.isFailure) {
+          pt.dealias match {
+            case TypeRef(_, SourceContextClass, _) =>
+              // construct new SourceContext instance
+              result = sourceInfo(this, context0, tree)
+              // there is no existing SourceContext to chain with
+              updateSourceContext = false
+            case _ =>
+          }
           context.updateBuffer(previousErrs)
           if (Statistics.canEnable) Statistics.stopTimer(oftypeFailNanos, failstart)
         } else {
@@ -1217,7 +1246,7 @@ trait Implicits extends NscImplicits {
       if (result.isFailure && settings.debug.value)
         log("no implicits found for "+pt+" "+pt.typeSymbol.info.baseClasses+" "+implicitsOfExpectedType)
 
-      result
+      updatedWithSourceContext(this, tree, pt, context0, result, updateSourceContext)
     }
 
     override def allImplicits: List[SearchResult] = {
