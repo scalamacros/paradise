@@ -3,7 +3,7 @@ import Keys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.10.2-RC1",
+    scalaVersion := "2.10.2-RC2",
     crossVersion := CrossVersion.full,
     version := "2.0.0-SNAPSHOT",
     organization := "org.scalamacros",
@@ -139,7 +139,7 @@ object build extends Build {
   ) settings (
     sharedSettings ++ usePluginSettings: _*
   ) settings (
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang.virtualized" % "scala-reflect" % _),
     publishArtifact in Compile := false
   )
 
