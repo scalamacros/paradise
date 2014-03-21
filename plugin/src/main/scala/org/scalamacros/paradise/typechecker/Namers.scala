@@ -449,6 +449,9 @@ trait Namers {
               if (defSym == NoSymbol) cx = cx.outer
             }
           }
+          if (defSym == NoSymbol && settings.exposeEmptyPackage.value) {
+            defSym = rootMirror.EmptyPackageClass.info member name
+          }
 
           // STEP 2: RESOLVE THE NAME IN IMPORTS
           val symDepth = if (defEntry eq null) cx.depth
