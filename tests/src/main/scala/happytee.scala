@@ -7,7 +7,7 @@ object happyteeMacro {
     import c.universe._
     annottees.map(_.tree).toList match {
       case (tsappa @ ValDef(_, _, tpt, _)) :: _ => {
-        val tpe = c.typeCheck(q"(null.asInstanceOf[$tpt])").tpe
+        val tpe = c.typeCheck(TypeApply(Select(Literal(Constant(null)), newTermName("asInstanceOf")), List(tpt))).tpe
         c.Expr(Block(List(tsappa), Literal(Constant(()))))
       }
     }
