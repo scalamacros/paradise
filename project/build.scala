@@ -159,6 +159,11 @@ object build extends Build {
       val (negAnns, otherAnns) = anns.listFiles.toList.partition(_.getName == "neg")
       otherAnns ++ others
     },
+    fullClasspath in Test := {
+      val testcp = (fullClasspath in Test).value.files.map(_.getAbsolutePath).mkString(java.io.File.pathSeparatorChar.toString)
+      sys.props("classpath.for.repl.tests") = testcp
+      (fullClasspath in Test).value
+    },
     scalacOptions ++= Seq()
     // scalacOptions ++= Seq("-Xprint:typer")
     // scalacOptions ++= Seq("-Xlog-implicits")
