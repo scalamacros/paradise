@@ -57,6 +57,8 @@ trait Reifiers { self: Quasiquotes =>
      *
      *    where pattern corresponds to reified tree and guard represents conjunction of equalities
      *    which check that pairs of names in nameMap.values are equal between each other.
+     *  NOTE: would love to do something like that in Scala 2.10, but name-based pattern matching is not supported
+     *  and introduceTopLevel-like shenanigans usually lead to big troubles with SBT
      */
     def wrap(tree: Tree) =
       if (isReifyingExpressions) {
@@ -71,47 +73,20 @@ trait Reifiers { self: Quasiquotes =>
         // q"..$freshdefs; $tree"
         SyntacticBlock(freshdefs :+ tree)
       } else {
-        val freevars = holeMap.keysIterator.map(Ident(_)).toList
-        val isVarPattern = tree match { case Bind(name, Ident(nme.WILDCARD)) => true case _ => false }
-        val cases =
-          if(isVarPattern) {
-            val Ident(name) :: Nil = freevars
-            // cq"$name: $treeType => $SomeModule($name)" :: Nil
-            CaseDef(Bind(name, Typed(Ident(nme.WILDCARD), TypeTree(treeType))),
-              EmptyTree, Apply(Ident(SomeModule), List(Ident(name)))) :: Nil
-          } else {
-            val (succ, fail) = freevars match {
-              case Nil =>
-                // (q"true", q"false")
-                (Literal(Constant(true)), Literal(Constant(false)))
-              case head :: Nil =>
-                // (q"$SomeModule($head)", q"$NoneModule")
-                (Apply(Ident(SomeModule), List(head)), Ident(NoneModule))
-              case vars =>
-                // (q"$SomeModule((..$vars))", q"$NoneModule")
-                (Apply(Ident(SomeModule), List(SyntacticTuple(vars))), Ident(NoneModule))
-            }
-            val guard =
-              nameMap.collect { case (_, nameset) if nameset.size >= 2 =>
-                nameset.toList.sliding(2).map { case List(n1, n2) =>
-                  // q"$n1 == $n2"
-                  Apply(Select(Ident(n1), nme.EQ), List(Ident(n2)))
-                }
-              }.flatten.reduceOption[Tree] { (l, r) =>
-                // q"$l && $r"
-                Apply(Select(l, nme.ZAND), List(r))
-              }.getOrElse { EmptyTree }
-            // cq"$tree if $guard => $succ" :: cq"_ => $fail" :: Nil
-            CaseDef(tree, guard, succ) :: CaseDef(Ident(nme.WILDCARD), EmptyTree, fail) :: Nil
+        def unsupportedIn210() = c.abort(c.enclosingPosition, "this quasiquote pattern is only supported in Scala 2.11")
+        if (unlifters.preamble.nonEmpty) unsupportedIn210()
+        if (nameMap.exists(_._2.size > 1)) unsupportedIn210()
+        // http://i.imgur.com/xVyoSl.jpg
+        object placeholderMapper extends Transformer {
+          override def transform(tree: Tree): Tree = tree match {
+            case Bind(name, Ident(nme.WILDCARD)) if holeMap.contains(name) =>
+              val UnapplyHole(_, Bind(_, originalUnapplyArg)) = holeMap(name)
+              originalUnapplyArg
+            case _ =>
+              super.transform(tree)
           }
-        // q"new { def unapply(tree: $AnyClass) = { ..${unlifters.preamble()}; tree match { case ..$cases } } }.unapply(..$args)"
-        Apply(
-          Select(
-            SyntacticNew(Nil, Nil, emptyValDef, List(
-              DefDef(NoMods, nme.unapply, Nil, List(List(ValDef(NoMods, nme.tree, TypeTree(AnyClass.toType), EmptyTree))), TypeTree(),
-                SyntacticBlock(unlifters.preamble() :+ Match(Ident(nme.tree), cases))))),
-            nme.unapply),
-          args)
+        }
+        placeholderMapper.transform(tree)
       }
 
     def reifyFillingHoles(tree: Tree): Tree = {

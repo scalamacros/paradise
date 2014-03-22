@@ -177,7 +177,7 @@ trait Holes { self: Quasiquotes =>
     }
   }
 
-  class UnapplyHole(val rank: Rank, pat: Tree) extends Hole {
+  case class UnapplyHole(rank: Rank, pat: Tree) extends Hole {
     val (placeholderName, pos, tptopt) = pat match {
       case Bind(pname, inner @ Bind(_, Typed(Ident(nme.WILDCARD), tpt))) => (pname, inner.pos, Some(tpt))
       case Bind(pname, inner @ Typed(Ident(nme.WILDCARD), tpt))          => (pname, inner.pos, Some(tpt))
