@@ -87,18 +87,20 @@ object UnliftableProps extends QuasiquoteProperties("unliftable") {
     val orig = List(1, 2)
     val q"${l1: List[Int]}" = q"$orig" // q"List(1, 2)"
     assert(l1 == orig)
-    val q"f(..${l2: List[Int]})" = q"f(..$orig)" // q"f(1, 2)
-    assert(l2 == orig)
+    // TODO: this quasiquote pattern is only supported in Scala 2.11
+    // val q"f(..${l2: List[Int]})" = q"f(..$orig)" // q"f(1, 2)
+    // assert(l2 == orig)
   }
 
   property("unlift list (2)") = test {
     val orig2 = List(List(1, 2), List(3))
     val q"f(${l3: List[List[Int]]})" = q"f($orig2)" // q"f(List(List(1, 2), List(3)))
     assert(l3 == orig2)
-    val q"f(..${l4: List[List[Int]]})" = q"f(..$orig2)" // q"f(List(1, 2), List(3))"
-    assert(l4 == orig2)
-    val q"f(...${l5: List[List[Int]]})" = q"f(...$orig2)" // q"f(1, 2)(3)
-    assert(l5 == orig2)
+    // TODO: this quasiquote pattern is only supported in Scala 2.11
+    // val q"f(..${l4: List[List[Int]]})" = q"f(..$orig2)" // q"f(List(1, 2), List(3))"
+    // assert(l4 == orig2)
+    // val q"f(...${l5: List[List[Int]]})" = q"f(...$orig2)" // q"f(1, 2)(3)
+    // assert(l5 == orig2)
   }
 
   property("don't unlift non-tree unquotee (1)") = test {

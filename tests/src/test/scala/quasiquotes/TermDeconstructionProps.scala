@@ -155,25 +155,28 @@ object TermDeconstructionProps extends QuasiquoteProperties("term deconstruction
   }
 
   property("deconstruct while loop") = test {
-    val q"while($cond) $body" = parse("while(cond) body")
-    assert(cond ≈ q"cond")
-    assert(body ≈ q"body")
+    // TODO: this quasiquote pattern is only supported in Scala 2.11
+    // val q"while($cond) $body" = parse("while(cond) body")
+    // assert(cond ≈ q"cond")
+    // assert(body ≈ q"body")
   }
 
   property("deconstruct do while loop") = test {
-    val q"do $body while($cond)" = parse("do body while(cond)")
-    assert(cond ≈ q"cond")
-    assert(body ≈ q"body")
+    // TODO: this quasiquote pattern is only supported in Scala 2.11
+    // val q"do $body while($cond)" = parse("do body while(cond)")
+    // assert(cond ≈ q"cond")
+    // assert(body ≈ q"body")
   }
 
   property("deconstruct anonymous function with placeholders") = test {
-    val q"{ $f(_) }" = q"{ foo(_) }"
-    assert(f ≈ q"foo")
-    val q"{ _.$member }" = q"{ _.foo }"
-    assert(member ≈ newTermName("foo"))
-    val q"{ _ + $x }" = q"{ _ + x }"
-    assert(x ≈ q"x")
-    val q"{ _ * _ }" = q"{ _ * _ }"
+    // TODO: this quasiquote pattern is only supported in Scala 2.11
+    // val q"{ $f(_) }" = q"{ foo(_) }"
+    // assert(f ≈ q"foo")
+    // val q"{ _.$member }" = q"{ _.foo }"
+    // assert(member ≈ newTermName("foo"))
+    // val q"{ _ + $x }" = q"{ _ + x }"
+    // assert(x ≈ q"x")
+    // val q"{ _ * _ }" = q"{ _ * _ }"
   }
 
   property("si-8275 a") = test {
