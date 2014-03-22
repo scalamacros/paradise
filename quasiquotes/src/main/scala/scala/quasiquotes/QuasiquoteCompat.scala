@@ -6,21 +6,36 @@ import scala.reflect.internal.SymbolTable
 object QuasiquoteCompat { def apply[U <: Universe with Singleton](u0: U): QuasiquoteCompat { val u: u0.type } = new { val u: u0.type = u0 } with QuasiquoteCompat }
 trait QuasiquoteCompat {
   val u: Universe
-  val _u: SymbolTable = u.asInstanceOf[SymbolTable]
   import u._, definitions._, Flag._
 
-  // ==================== ADDITIONAL APIS THAT WE NEED IN UNIVERSE ====================
+  lazy val reificationSupport: build.type = build
+  lazy val build = new ReificationSupportImpl
 
-  trait UniverseApi {
+  trait CompatSupportApi {
+    object TermName {
+      def apply(s: String): TermName = newTermName(s)
+      def unapply(name: TermName): Some[String] = Some(name.toString)
+    }
+
+    object TypeName {
+      def apply(s: String): TypeName = newTypeName(s)
+      def unapply(name: TypeName): Some[String] = Some(name.toString)
+    }
+
+    object Modifiers {
+      def apply(flags: FlagSet, privateWithin: Name = TermName(""), annotations: List[Tree] = Nil): Modifiers =
+        u.Modifiers(flags, privateWithin, annotations)
+      def unapply(mods: Modifiers): Some[(FlagSet, Name, List[Tree])] =
+        Some((mods.flags, mods.privateWithin, mods.annotations))
+    }
+
+    object EmptyValDefLike {
+      def apply(): ValDef = emptyValDef
+      def unapply(tree: Tree): Boolean = tree eq emptyValDef
+    }
   }
 
-  val _universe: SymbolTableCompat = new { val global: _u.type = _u } with SymbolTableCompat
-
-  object universe extends UniverseApi {
-  }
-
-  // ==================== REIFICATIONSUPPORT COPY/PASTED FROM MASTER AND ADAPTED TO BE COMPATIBLE WITH SCALA.REFLECT.API.UNIVERSE ====================
-
+  // NOTE: this trait is copy/pasted from scala/scala@bcf24ec9ba
   trait ReificationSupportApi {
     /** Selects type symbol with given simple name `name` from the defined members of `owner`.
      */
@@ -358,12 +373,11 @@ trait QuasiquoteCompat {
     }
   }
 
-  // TODO: making this and similar fields private will crash at runtime with IllegalAccessError
+  // TODO: making these fields private will crash at runtime with IllegalAccessError
+  val _u: SymbolTable = u.asInstanceOf[SymbolTable]
   val _build = new { val global: _u.type = _u } with ReificationSupport
 
-  val reificationSupport: build.type = build
-
-  object build extends ReificationSupportApi {
+  class ReificationSupportImpl extends ReificationSupportApi with CompatSupportApi {
     def AnnotatedType(annotations: List[Annotation],underlying: Type,selfSym: Symbol): AnnotatedType = _build.AnnotatedType(annotations.asInstanceOf[List[_u.Annotation]], underlying.asInstanceOf[_u.Type], selfSym.asInstanceOf[_u.Symbol]).asInstanceOf[AnnotatedType]
     def BoundedWildcardType(bounds: TypeBounds): BoundedWildcardType = _build.BoundedWildcardType(bounds.asInstanceOf[_u.TypeBounds]).asInstanceOf[BoundedWildcardType]
     def ClassInfoType(parents: List[Type],decls: Scope,typeSymbol: Symbol): ClassInfoType = _build.ClassInfoType(parents.asInstanceOf[List[_u.Type]], decls.asInstanceOf[_u.Scope], typeSymbol.asInstanceOf[_u.Symbol]).asInstanceOf[ClassInfoType]

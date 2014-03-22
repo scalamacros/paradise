@@ -1,5 +1,7 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
+import scala.quasiquotes._
 import scala.reflect.runtime.universe._, Flag._
+import RuntimeLiftables._
 
 object UnliftableProps extends QuasiquoteProperties("unliftable") {
   property("unlift name") = test {

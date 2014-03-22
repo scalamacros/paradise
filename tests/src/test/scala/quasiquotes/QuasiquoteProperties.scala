@@ -19,7 +19,7 @@ trait Helpers {
 
   object simplify extends Transformer {
     object SimplifiedName {
-      val st = scala.quasiquotes.internal._universe.symbolTable
+      val st = scala.quasiquotes.internal._build.symbolTable
       val FreshName = new st.FreshNameExtractor
       def unapply[T <: Name](name: T): Option[T] = name.asInstanceOf[st.Name] match {
         case FreshName(prefix) =>
@@ -85,7 +85,7 @@ trait Helpers {
   def typecheck(tree: Tree) = toolbox.typeCheck(tree)
 
   def typecheckTyp(tree: Tree) = {
-    val q"{ type ${_} = $res; () }" = typecheck(q"type T = $tree")
+    val q"type ${_} = $res" = typecheck(q"type T = $tree")
     res
   }
 

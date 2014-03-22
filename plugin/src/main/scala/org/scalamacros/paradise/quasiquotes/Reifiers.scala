@@ -204,7 +204,7 @@ trait Reifiers { self: Quasiquotes =>
       case global.EmptyTree =>
         reifyMirrorObject(EmptyTree)
       case global.emptyValDef =>
-        mirrorSelect(nme.emptyValDef)
+        mirrorCompatCall(nme.EmptyValDefLike)
       case Literal(const @ Constant(_)) =>
         mirrorCall(nme.Literal, reifyProduct(const))
       case _ =>
@@ -223,7 +223,11 @@ trait Reifiers { self: Quasiquotes =>
         if (isReifyingPatterns) result(introduceName())
         else result(nameMap.get(name).map { _.head }.getOrElse { introduceName() })
       case _ =>
-        super.reifyName(name)
+        if (isReifyingExpressions) super.reifyName(name)
+        else {
+          val factory = if (name.isTypeName) nme.TypeName else nme.TermName
+          mirrorCompatCall(factory, Literal(Constant(name.toString)))
+        }
     }
 
     def reifyTuple(args: List[Tree]) = args match {
@@ -424,7 +428,7 @@ trait Reifiers { self: Quasiquotes =>
       }
 
     override def reifyModifiers(m: Modifiers) =
-      if (m == NoMods) super.reifyModifiers(m)
+      if (m == NoMods) mirrorSelect(nme.NoMods)
       else {
         val (modsPlaceholders, annots) = m.annotations.partition {
           case ModsPlaceholder(_) => true
@@ -448,7 +452,7 @@ trait Reifiers { self: Quasiquotes =>
           case _ =>
             val baseFlags = reifyFlags(m.flags)
             val reifiedFlags = flags.foldLeft[Tree](baseFlags) { case (flag, hole) => Apply(Select(flag, nme.OR), List(hole.tree)) }
-            mirrorFactoryCall(nme.Modifiers, reifiedFlags, reify(m.privateWithin), reifyAnnotList(annots))
+            mirrorCompatCall(nme.Modifiers, reifiedFlags, reify(m.privateWithin), reifyAnnotList(annots))
         }
       }
 
@@ -477,7 +481,7 @@ trait Reifiers { self: Quasiquotes =>
     }
 
     override def reifyModifiers(m: Modifiers) =
-      if (m == NoMods) super.reifyModifiers(m)
+      if (m == NoMods) mirrorSelect(nme.NoMods)
       else {
         val mods = m.annotations.collect { case ModsPlaceholder(hole: UnapplyHole) => hole }
         mods match {
@@ -488,7 +492,7 @@ trait Reifiers { self: Quasiquotes =>
           case _ :: hole :: _ =>
             c.abort(hole.pos, "Can't extract multiple modifiers together, consider extracting a single modifiers instance")
           case Nil =>
-            mirrorFactoryCall(nme.Modifiers, reifyFlags(m.flags), reify(m.privateWithin), reifyAnnotList(m.annotations))
+            mirrorCompatCall(nme.Modifiers, reifyFlags(m.flags), reify(m.privateWithin), reifyAnnotList(m.annotations))
         }
       }
   }

@@ -1,4 +1,5 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
+import scala.quasiquotes._
 import scala.reflect.runtime.universe._, Flag._, internal.reificationSupport.SyntacticClassDef
 
 object DefinitionDeconstructionProps
@@ -102,11 +103,11 @@ trait ClassDeconstruction { self: QuasiquoteProperties =>
           Modifiers(), newTypeName("Foo"), List(),
           Template(
             List(Select(Ident(newTermName("scala")), newTypeName("AnyRef"))),
-            noSelfType,
+            emptyValDef,
             List(
               //ValDef(Modifiers(PRIVATE | LOCAL | PARAMACCESSOR), newTermName("x"), Ident(newTypeName("Int")), EmptyTree),
-              DefDef(Modifiers(), termNames.CONSTRUCTOR, List(), List(List(ValDef(Modifiers(PARAM | PARAMACCESSOR), newTermName("x"),
-                Ident(newTypeName("Int")), EmptyTree))), TypeTree(), Block(List(pendingSuperCall), Literal(Constant(())))))))
+              DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List(ValDef(Modifiers(PARAM | PARAMACCESSOR), newTermName("x"),
+                Ident(newTypeName("Int")), EmptyTree))), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))))))
     }
   }
 
@@ -127,7 +128,7 @@ trait ModsDeconstruction { self: QuasiquoteProperties =>
 
   property("@$annot def foo") = forAll { (annotName: TypeName) =>
     val q"@$annot def foo" = q"@$annotName def foo"
-    annot ≈ Apply(Select(New(Ident(annotName)), termNames.CONSTRUCTOR), List())
+    annot ≈ Apply(Select(New(Ident(annotName)), nme.CONSTRUCTOR), List())
   }
 
   property("@$annot(..$args) def foo") = forAll { (annotName: TypeName, tree: Tree) =>
@@ -279,6 +280,6 @@ trait ImportDeconstruction { self: QuasiquoteProperties =>
         q"import $expr.{$plain, $oldname => $newname, $discard => _}"
 
     expr1 ≈ expr && plain11 == plain12 && plain12 == plain &&
-    oldname1 == oldname && newname1 == newname && discard1 == discard && wildcard == termNames.WILDCARD
+    oldname1 == oldname && newname1 == newname && discard1 == discard && wildcard == nme.WILDCARD
   }
 }
