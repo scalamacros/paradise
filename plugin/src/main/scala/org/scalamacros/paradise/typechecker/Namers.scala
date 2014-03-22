@@ -332,6 +332,7 @@ trait Namers {
 
           annZippers.toStream.flatMap(annz => maybeExpand(annz.annotation, annz.annottee, annz.owner)).headOption match {
             case Some(expanded) =>
+              tellReplAboutExpansion(sym, companion, expanded)
               markExpanded(sym)
               markExpanded(companion)
               // expansion brings new trees, probably wildly different from current ones. what do we do?
