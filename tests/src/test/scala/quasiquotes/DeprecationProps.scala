@@ -1,5 +1,6 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
 import scala.reflect.runtime.universe._
+import scala.quasiquotes.RuntimeLiftables._
 
 object DeprecationProps extends QuasiquoteProperties("deprecation") {
   val tname = newTypeName("Foo")

@@ -1,6 +1,7 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
 import scala.reflect.runtime.universe._, Flag._
 import scala.language.implicitConversions
+import scala.quasiquotes.RuntimeLiftables._
 
 trait ArbitraryTreesAndNames {
   def smallList[T](size: Int, g: Gen[T]) = {
