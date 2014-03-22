@@ -12,6 +12,13 @@ trait Definitions {
   import definitions._
 
   object paradiseDefinitions {
+    private def enterNewMethod(owner: Symbol, name: String, tparams: List[MethodSymbol => Symbol], param: List[Symbol] => Type, ret: List[Symbol] => Type, flags: Long): MethodSymbol = {
+      val m = owner.newMethod(newTermName(name), NoPosition, flags)
+      val ts = tparams.map(_(m))
+      val ps = m.newSyntheticValueParams(List(param(ts)))
+      m.setInfoAndEnter(if (ts.isEmpty) MethodType(ps, ret(ts)) else PolyType(ts, MethodType(ps, ret(ts))))
+    }
+
     lazy val InheritedAttr = requiredClass[java.lang.annotation.Inherited]
 
     lazy val TreeType = {
@@ -39,13 +46,6 @@ trait Definitions {
       //      }
       //   }
       if (ApiUniverseClass != NoSymbol) {
-        def enterNewMethod(owner: Symbol, name: String, tparams: List[MethodSymbol => Symbol], param: List[Symbol] => Type, ret: List[Symbol] => Type, flags: Long): MethodSymbol = {
-          val m = owner.newMethod(newTermName(name), NoPosition, flags)
-          val ts = tparams.map(_(m))
-          val ps = m.newSyntheticValueParams(List(param(ts)))
-          m.setInfoAndEnter(if (ts.isEmpty) MethodType(ps, ret(ts)) else PolyType(ts, MethodType(ps, ret(ts))))
-        }
-
         val impClass = ApiUniverseClass.newClassSymbol(newTypeName("Quasiquote"), NoPosition, IMPLICIT)
         impClass.setInfoAndEnter(ClassInfoType(List(typeOf[AnyRef]), newScope, impClass))
         enterNewMethod(ApiUniverseClass, "Quasiquote", Nil, _ => typeOf[StringContext], _ => impClass.tpe, METHOD | IMPLICIT | SYNTHETIC)
@@ -64,8 +64,36 @@ trait Definitions {
       }
     }
 
+    lazy val LiftableClass = {
+      // trait Liftable[T] {
+      //   def apply(value: T): Tree
+      // }
+      if (ApiUniverseClass != NoSymbol) {
+        val liftable = ApiUniverseClass.newClassSymbol(newTypeName("Liftable"), NoPosition, ABSTRACT | INTERFACE | TRAIT)
+        val t = liftable.newSyntheticTypeParam
+        liftable.setInfoAndEnter(PolyType(List(t), ClassInfoType(List(typeOf[AnyRef]), newScope, liftable)))
+        enterNewMethod(liftable, "apply", Nil, _ => t.tpe, _ => TreeType, DEFERRED)
+        liftable
+      } else {
+        NoSymbol
+      }
+    }
+
+    lazy val UnliftableClass = {
+      // trait Unliftable[T] {
+      //   def unapply(tree: Tree): Option[T]
+      // }
+      if (ApiUniverseClass != NoSymbol) {
+        val unliftable = ApiUniverseClass.newClassSymbol(newTypeName("Unliftable"), NoPosition, ABSTRACT | INTERFACE | TRAIT)
+        val t = unliftable.newSyntheticTypeParam
+        unliftable.setInfoAndEnter(PolyType(List(t), ClassInfoType(List(typeOf[AnyRef]), newScope, unliftable)))
+        enterNewMethod(unliftable, "unapply", Nil, _ => TreeType, _ => appliedType(OptionClass, t.tpe), DEFERRED)
+      } else {
+        NoSymbol
+      }
+    }
+
     lazy val QuasiquoteCompatModule = getModuleIfDefined("scala.quasiquotes.QuasiquoteCompat")
-    lazy val LiftableClass = getClassIfDefined("org.scalamacros.quasiquotes.Liftable")
 
     private def termPath(fullname: String): Tree = {
       val parts = fullname split "\\."
@@ -105,6 +133,8 @@ trait Definitions {
 
     def init() = {
       QuasiquoteMacros
+      LiftableClass
+      UnliftableClass
     }
   }
 }
