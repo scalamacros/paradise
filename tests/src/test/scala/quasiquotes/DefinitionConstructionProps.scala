@@ -362,52 +362,52 @@ trait MethodConstruction { self: QuasiquoteProperties =>
 }
 
 trait PackageConstruction { self: QuasiquoteProperties =>
-  property("unquote select into package name") = test {
-    val name = q"foo.bar"
-    assertEqAst(q"package $name { }", "package foo.bar { }")
-  }
+  // property("unquote select into package name") = test {
+  //   val name = q"foo.bar"
+  //   assertEqAst(q"package $name { }", "package foo.bar { }")
+  // }
 
-  property("splce name into package name") = test{
-    val name = newTermName("bippy")
-    assertEqAst(q"package $name { }", "package bippy { }")
-  }
+  // property("splce name into package name") = test{
+  //   val name = newTermName("bippy")
+  //   assertEqAst(q"package $name { }", "package bippy { }")
+  // }
 
-  property("unquote members into package body") = test {
-    val members = q"class C" :: q"object O" :: Nil
-    assertEqAst(q"package foo { ..$members }", "package foo { class C; object O }")
-  }
+  // property("unquote members into package body") = test {
+  //   val members = q"class C" :: q"object O" :: Nil
+  //   assertEqAst(q"package foo { ..$members }", "package foo { class C; object O }")
+  // }
 
-  property("unquote illegal members into package body") = test {
-    val f = q"def f"
-    assertThrows[IllegalArgumentException] { q"package foo { $f }" }
-    val v = q"val v = 0"
-    assertThrows[IllegalArgumentException] { q"package foo { $v }" }
-    val expr = q"x + 1"
-    assertThrows[IllegalArgumentException] { q"package foo { $expr }" }
-  }
+  // property("unquote illegal members into package body") = test {
+  //   val f = q"def f"
+  //   assertThrows[IllegalArgumentException] { q"package foo { $f }" }
+  //   val v = q"val v = 0"
+  //   assertThrows[IllegalArgumentException] { q"package foo { $v }" }
+  //   val expr = q"x + 1"
+  //   assertThrows[IllegalArgumentException] { q"package foo { $expr }" }
+  // }
 
-  property("unquote name into package object") = test {
-    val foo = newTermName("foo")
-    assertEqAst(q"package object $foo", "package object foo")
-  }
+  // property("unquote name into package object") = test {
+  //   val foo = newTermName("foo")
+  //   assertEqAst(q"package object $foo", "package object foo")
+  // }
 
-  property("unquote parents into package object") = test {
-    val parents = tq"a" :: tq"b" :: Nil
-    assertEqAst(q"package object foo extends ..$parents",
-                 "package object foo extends a with b")
-  }
+  // property("unquote parents into package object") = test {
+  //   val parents = tq"a" :: tq"b" :: Nil
+  //   assertEqAst(q"package object foo extends ..$parents",
+  //                "package object foo extends a with b")
+  // }
 
-  property("unquote members into package object") = test {
-    val members = q"def foo" :: q"val x = 1" :: Nil
-    assertEqAst(q"package object foo { ..$members }",
-                 "package object foo { def foo; val x = 1 }")
-  }
+  // property("unquote members into package object") = test {
+  //   val members = q"def foo" :: q"val x = 1" :: Nil
+  //   assertEqAst(q"package object foo { ..$members }",
+  //                "package object foo { def foo; val x = 1 }")
+  // }
 
-  property("unquote early def into package object") = test {
-    val edefs = q"val x = 1" :: q"type I = Int" :: Nil
-    assertEqAst(q"package object foo extends { ..$edefs } with Any",
-                 "package object foo extends { val x = 1; type I = Int } with Any")
-  }
+  // property("unquote early def into package object") = test {
+  //   val edefs = q"val x = 1" :: q"type I = Int" :: Nil
+  //   assertEqAst(q"package object foo extends { ..$edefs } with Any",
+  //                "package object foo extends { val x = 1; type I = Int } with Any")
+  // }
 }
 
 trait DefConstruction { self: QuasiquoteProperties =>
