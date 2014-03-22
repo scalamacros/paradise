@@ -85,12 +85,14 @@ trait Helpers {
   def typecheck(tree: Tree) = toolbox.typeCheck(tree)
 
   def typecheckTyp(tree: Tree) = {
-    val q"{ type ${_} = $res; () }" = typecheck(q"type T = $tree")
+    // val q"{ type ${_} = $res; () }" = typecheck(q"type T = $tree")
+    val Block(List(TypeDef(_, _, _, res)), _) = typecheck(q"type T = $tree")
     res
   }
 
   def typecheckPat(tree: Tree) = {
-    val q"${_} match { case $res => }" = typecheck(q"((): Any) match { case $tree => }")
+    // val q"${_} match { case $res => }" = typecheck(q"((): Any) match { case $tree => }")
+    val Match(_, List(CaseDef(res, _, _))) = typecheck(q"((): Any) match { case $tree => }")
     res
   }
 
