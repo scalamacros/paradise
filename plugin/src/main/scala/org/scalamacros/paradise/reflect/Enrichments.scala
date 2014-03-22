@@ -12,7 +12,8 @@ trait Enrichments extends Definitions
                      with StdAttachments
                      with ReflectionUtils
                      with Mirrors
-                     with Symbols {
+                     with Symbols
+                     with ReplIntegration {
 
   val global: NscGlobal
   implicit def paradiseSettings(settings: NscSettings) = ParadiseSettings
