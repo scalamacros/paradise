@@ -114,8 +114,8 @@ trait ClassDeconstruction { self: QuasiquoteProperties =>
   property("SI-8332") = test {
     val q"class C(implicit ..$args)" = q"class C(implicit i: I, j: J)"
     val q"$imods val i: I" :: q"$jmods val j: J" :: Nil = args
-    assert(imods.hasFlag(IMPLICIT))
-    assert(jmods.hasFlag(IMPLICIT))
+    assert(imods.asInstanceOf[Modifiers].hasFlag(IMPLICIT))
+    assert(jmods.asInstanceOf[Modifiers].hasFlag(IMPLICIT))
   }
 }
 
