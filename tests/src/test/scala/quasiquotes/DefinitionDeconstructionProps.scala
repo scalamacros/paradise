@@ -181,26 +181,26 @@ trait ValVarDeconstruction { self: QuasiquoteProperties =>
 }
 
 trait PackageDeconstruction { self: QuasiquoteProperties =>
-  property("exhaustive package matcher") = test {
-    def matches(line: String) { val q"package $name { ..$body }" = parse(line) }
-    matches("package foo { }")
-    matches("package foo { class C }")
-    matches("package foo.bar { }")
-    matches("package bippy.bongo { object A; object B }")
-    matches("package bippy { package bongo { object O } }")
-  }
+  // property("exhaustive package matcher") = test {
+  //   def matches(line: String) { val q"package $name { ..$body }" = parse(line) }
+  //   matches("package foo { }")
+  //   matches("package foo { class C }")
+  //   matches("package foo.bar { }")
+  //   matches("package bippy.bongo { object A; object B }")
+  //   matches("package bippy { package bongo { object O } }")
+  // }
 
-  property("exhaustive package object matcher") = test {
-    def matches(line: String) {
-      val q"package object $name extends { ..$early } with ..$parents { $self => ..$body }" = parse(line)
-    }
-    matches("package object foo")
-    matches("package object foo { def baz }")
-    matches("package object foo { self => }")
-    matches("package object foo extends mammy with daddy { def baz }")
-    matches("package object foo extends { val early = 1 } with daddy")
-    assertThrows[MatchError] { matches("object foo") }
-  }
+  // property("exhaustive package object matcher") = test {
+  //   def matches(line: String) {
+  //     val q"package object $name extends { ..$early } with ..$parents { $self => ..$body }" = parse(line)
+  //   }
+  //   matches("package object foo")
+  //   matches("package object foo { def baz }")
+  //   matches("package object foo { self => }")
+  //   matches("package object foo extends mammy with daddy { def baz }")
+  //   matches("package object foo extends { val early = 1 } with daddy")
+  //   assertThrows[MatchError] { matches("object foo") }
+  // }
 }
 
 trait DefDeconstruction { self: QuasiquoteProperties =>
