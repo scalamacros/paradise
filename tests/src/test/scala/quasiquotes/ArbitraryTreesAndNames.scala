@@ -265,8 +265,8 @@ trait ArbitraryTreesAndNames {
   def genTreeIsTypeWrapped(size: Int) =
     for(tit <- genTreeIsType(size)) yield TreeIsType(tit)
 
-  implicit val liftTreeIsTerm = Liftable[TreeIsTerm] { _.tree }
-  implicit val liftTreeIsType = Liftable[TreeIsType] { _.tree }
+  // implicit val liftTreeIsTerm = Liftable[TreeIsTerm] { _.tree }
+  // implicit val liftTreeIsType = Liftable[TreeIsType] { _.tree }
   implicit def treeIsTerm2tree(tit: TreeIsTerm): Tree = tit.tree
   implicit def treeIsType2tree(tit: TreeIsType): Tree = tit.tree
 
