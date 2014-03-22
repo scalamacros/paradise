@@ -14,11 +14,11 @@ object DeprecationProps extends QuasiquoteProperties("deprecation") {
   }
 
   property("new tpe args") = test {
-    // assert(q"new $tpe(..$args)" ≈ New(tpe, args: _*))
+    assert(q"new $tpe(..$args)" ≈ New(tpe, args: _*))
   }
 
   property("new tpe args") = test {
-    // assert(q"new ${sym.toType}(..$args)" ≈ New(sym, args: _*))
+    assert(q"new ${sym.toType}(..$args)" ≈ New(sym, args: _*))
   }
 
   property("apply sym args") = test {
@@ -34,7 +34,7 @@ object DeprecationProps extends QuasiquoteProperties("deprecation") {
   }
 
   property("throw tpe args") = test {
-    // assert(q"throw new $tpe(..$args)" ≈ Throw(tpe, args: _*))
+    assert(q"throw new $tpe(..$args)" ≈ Throw(tpe, args: _*))
   }
 
   property("casedef pat body") = test {
