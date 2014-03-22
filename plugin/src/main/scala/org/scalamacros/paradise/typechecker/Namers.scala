@@ -145,7 +145,7 @@ trait Namers {
 
     // reimplemented to integrate with weakEnsureCompanionObject
     def ensureCompanionObject(cdef: ClassDef, creator: ClassDef => Tree = companionModuleDef(_)): Symbol = {
-      val m = companionSymbolOf(cdef.symbol, context)
+      val m = patchedCompanionSymbolOf(cdef.symbol, context)
       def synthesizeTree = atPos(cdef.pos.focus)(creator(cdef))
       if (m != NoSymbol && currentRun.compiles(m) && !isWeak(m)) m
       else unmarkWeak(enterSyntheticSym(synthesizeTree))
@@ -156,7 +156,7 @@ trait Namers {
      */
     // TODO: deduplicate
     def weakEnsureCompanionObject(cdef: ClassDef, creator: ClassDef => Tree = companionModuleDef(_)): Symbol = {
-      val m = companionSymbolOf(cdef.symbol, context)
+      val m = patchedCompanionSymbolOf(cdef.symbol, context)
       if (m != NoSymbol && currentRun.compiles(m)) m
       else { val mdef = atPos(cdef.pos.focus)(creator(cdef)); enterSym(mdef); markWeak(mdef.symbol) }
     }
@@ -188,7 +188,7 @@ trait Namers {
         // that's the limitation of how namer works, but nevertheless it's not a problem for us
         // because if finishing `class C` doesn't set up the things, finishing `object C` will
         val sym = tree.symbol
-        val companion = companionSymbolOf(sym, context)
+        val companion = patchedCompanionSymbolOf(sym, context)
 
         tree match {
           // TODO: should we also support annotations on modules expanding companion classes?
@@ -341,7 +341,7 @@ trait Namers {
       sym.setInfo(new MaybeExpandeeCompleter(tree) {
         override def kind = s"maybeExpandeeCompleter for ${sym.accurateKindString} ${sym.rawname}#${sym.id}"
         override def maybeExpand(): Unit = {
-          val companion = if (tree.isInstanceOf[ClassDef]) companionSymbolOf(sym, context) else NoSymbol
+          val companion = if (tree.isInstanceOf[ClassDef]) patchedCompanionSymbolOf(sym, context) else NoSymbol
 
           def maybeExpand(annotation: Tree, annottee: Tree, maybeExpandee: Tree): Option[List[Tree]] = {
             val treeInfo.Applied(Select(New(tpt), nme.CONSTRUCTOR), _, _) = annotation
@@ -550,6 +550,27 @@ trait Namers {
           if (reallyExists(sym) && isAccessible(context, sym)) sym else NoSymbol
         case _ =>
           NoSymbol
+      }
+    }
+
+    // see https://github.com/scalamacros/paradise/issues/7
+    def patchedCompanionSymbolOf(original: Symbol, ctx: Context): Symbol = {
+      val owner = original.owner
+      // SI-7264 Force the info of owners from previous compilation runs.
+      //         Doing this generally would trigger cycles; that's what we also
+      //         use the lower-level scan through the current Context as a fall back.
+      if (!currentRun.compiles(owner) &&
+          // NOTE: the following three lines of code are added to work around #7
+          !owner.enclosingTopLevelClass.isRefinementClass &&
+          !owner.ownerChain.exists(_.isLocalDummy) &&
+          owner.ownerChain.forall(!currentRun.compiles(_))) {
+        owner.initialize
+      }
+      original.companionSymbol orElse {
+        ctx.lookup(original.name.companionName, owner).suchThat(sym =>
+          (original.isTerm || sym.hasModuleFlag) &&
+          (sym isCoDefinedWith original)
+        )
       }
     }
   }
