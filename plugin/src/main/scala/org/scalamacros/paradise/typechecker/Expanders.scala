@@ -21,7 +21,7 @@ trait Expanders {
     import expanderErrorGen._
 
     def prepareAnnotationMacro(ann: Tree, mann: Symbol, sym: Symbol, annottee: Tree, expandee: Tree): Tree = {
-      val companion = if (expandee.isInstanceOf[ClassDef]) companionSymbolOf(sym, context) else NoSymbol
+      val companion = if (expandee.isInstanceOf[ClassDef]) patchedCompanionSymbolOf(sym, context) else NoSymbol
       val companionSource = if (!isWeak(companion)) attachedSource(companion) else EmptyTree
       val expandees = List(annottee, expandee, companionSource).distinct.filterNot(_.isEmpty)
       val safeExpandees = expandees.map(_.duplicate).map(_.setSymbol(NoSymbol))
@@ -31,7 +31,7 @@ trait Expanders {
 
     def expandAnnotationMacro(original: Tree, expandee: Tree): Option[List[Tree]] = {
       val sym = original.symbol
-      val companion = if (original.isInstanceOf[ClassDef]) companionSymbolOf(sym, context) else NoSymbol
+      val companion = if (original.isInstanceOf[ClassDef]) patchedCompanionSymbolOf(sym, context) else NoSymbol
       val wasWeak = isWeak(companion)
       val wasTransient = companion == NoSymbol || companion.isSynthetic
       def rollThroughImports(context: Context): Context = {
