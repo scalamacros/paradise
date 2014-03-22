@@ -1,87 +1,119 @@
 package org.scalamacros.paradise
 package reflect
 
+import scala.language.implicitConversions
+
 trait StdNames {
   self: Enrichments =>
   import global._
 
-  implicit class ParadiseNme(nme: global.nme.type) {
-    val annottees: TermName            = "annottees"
-    val Apply: TermName                = "Apply"
-    val CONS: TermName                 = encode("::")
-    val collection: TermName           = "collection"
-    val EmptyValDefLike: TermName      = "EmptyValDefLike"
-    val False : TermName               = "False"
-    val flatten: TermName              = "flatten"
-    val foldLeft: TermName             = "foldLeft"
-    val FlagsRepr: TermName            = "FlagsRepr"
-    val immutable: TermName            = "immutable"
-    val macroTransform: TermName       = "macroTransform"
-    val mkAnnotation: TermName         = "mkAnnotation"
-    val mkRefineStat: TermName         = "mkRefineStat"
-    val mkEarlyDef: TermName           = "mkEarlyDef"
-    val New: TermName                  = "New"
-    val NoMods: TermName               = "NoMods"
-    val PLUSPLUS: TermName             = encode("++")
-    val QUASIQUOTE_TUPLE: TermName     = paradisenme.QUASIQUOTE_TUPLE
-    val QUASIQUOTE_CASE: TermName      = paradisenme.QUASIQUOTE_CASE
-    val QUASIQUOTE_PREFIX: String      = "qq$"
-    val QUASIQUOTE_FILE: String        = "<quasiquote>"
-    val RefTree: TermName              = "RefTree"
-    val ScalaDot: TermName             = "ScalaDot"
-    val SyntacticApplied: TermName     = "SyntacticApplied"
-    val SyntacticAssign: TermName      = "SyntacticAssign"
-    val SyntacticBlock: TermName       = "SyntacticBlock"
-    val SyntacticClassDef: TermName    = "SyntacticClassDef"
-    val SyntacticDefDef: TermName      = "SyntacticDefDef"
-    val SyntacticFunction: TermName    = "SyntacticFunction"
-    val SyntacticFunctionType: TermName= "SyntacticFunctionType"
-    val SyntacticModuleDef: TermName   = "SyntacticModuleDef"
-    val SyntacticNew: TermName         = "SyntacticNew"
-    val SyntacticTraitDef: TermName    = "SyntacticTraitDef"
-    val SyntacticTuple: TermName       = "SyntacticTuple"
-    val SyntacticTupleType: TermName   = "SyntacticTupleType"
-    val SyntacticTypeApplied: TermName = "SyntacticTypeApplied"
-    val SyntacticValDef: TermName      = "SyntacticValDef"
-    val SyntacticVarDef: TermName      = "SyntacticVarDef"
-    val TermName: TermName             = "TermName"
-    val True : TermName                = "True"
-    val TypeName: TermName             = "TypeName"
-    val toList: TermName               = "toList"
-  }
+  implicit def paradiseNme(nme: global.nme.type): paradisenme.type = paradisenme
 
   object paradisenme {
-    val q: TermName                = "q"
-    val tq: TermName               = "tq"
-    val cq: TermName               = "cq"
-    val pq: TermName               = "pq"
-    val QUASIQUOTE_TUPLE: TermName = "$quasiquote$tuple$"
-    val QUASIQUOTE_CASE: TermName  = "$quasiquote$case$"
+    val annottees: TermName                = "annottees"
+    val Apply: TermName                    = "Apply"
+    val CaseDef: TermName                  = "CaseDef"
+    val COLONPLUS: TermName                = encode(":+")
+    val CONS: TermName                     = encode("::")
+    val collection: TermName               = "collection"
+    val cq: TermName                       = "cq"
+    val EmptyValDefLike: TermName          = "EmptyValDefLike"
+    val False : TermName                   = "False"
+    val flatten: TermName                  = "flatten"
+    val foldLeft: TermName                 = "foldLeft"
+    val fq: TermName                       = "fq"
+    val FlagsRepr: TermName                = "FlagsRepr"
+    val freshTermName: TermName            = "freshTermName"
+    val freshTypeName: TermName            = "freshTypeName"
+    val immutable: TermName                = "immutable"
+    val ImplicitParams: TermName           = "ImplicitParams"
+    val macroTransform: TermName           = "macroTransform"
+    val mkAnnotation: TermName             = "mkAnnotation"
+    val mkEarlyDef: TermName               = "mkEarlyDef"
+    val mkIdent: TermName                  = "mkIdent"
+    val mkPackageStat: TermName            = "mkPackageStat"
+    val mkRefineStat: TermName             = "mkRefineStat"
+    val mkRefTree: TermName                = "mkRefTree"
+    val mkSelect: TermName                 = "mkSelect"
+    val mkThis: TermName                   = "mkThis"
+    val mkTypeTree: TermName               = "mkTypeTree"
+    val New: TermName                      = "New"
+    val NoMods: TermName                   = "NoMods"
+    val PLUSPLUS: TermName                 = encode("++")
+    val pq: TermName                       = "pq"
+    val q: TermName                        = "q"
+    val QUASIQUOTE_CASE: TermName          = "$quasiquote$case$"
+    val QUASIQUOTE_EARLY_DEF: TermName     = "$quasiquote$early$def$"
+    val QUASIQUOTE_FILE: String            = "<quasiquote>"
+    val QUASIQUOTE_FOR_ENUM: TermName      = "$quasiquote$for$enum$"
+    val QUASIQUOTE_NAME_PREFIX: String     = "nn$"
+    val QUASIQUOTE_PACKAGE_STAT: TermName  = "$quasiquote$package$stat$"
+    val QUASIQUOTE_PARAM: TermName         = "$quasiquote$param$"
+    val QUASIQUOTE_PAT_DEF: TermName       = "$quasiquote$pat$def$"
+    val QUASIQUOTE_PREFIX: String          = "qq$"
+    val QUASIQUOTE_REFINE_STAT: TermName   = "$quasiquote$refine$stat$"
+    val QUASIQUOTE_TUPLE: TermName         = "$quasiquote$tuple$"
+    val QUASIQUOTE_UNLIFT_HELPER: String   = "$quasiquote$unlift$helper$"
+    val RefTree: TermName                  = "RefTree"
+    val ScalaDot: TermName                 = "ScalaDot"
+    val SyntacticApplied: TermName         = "SyntacticApplied"
+    val SyntacticAppliedType: TermName     = "SyntacticAppliedType"
+    val SyntacticAssign: TermName          = "SyntacticAssign"
+    val SyntacticBlock: TermName           = "SyntacticBlock"
+    val SyntacticClassDef: TermName        = "SyntacticClassDef"
+    val SyntacticDefDef: TermName          = "SyntacticDefDef"
+    val SyntacticEmptyTypeTree: TermName   = "SyntacticEmptyTypeTree"
+    val SyntacticFilter: TermName          = "SyntacticFilter"
+    val SyntacticFor: TermName             = "SyntacticFor"
+    val SyntacticForYield: TermName        = "SyntacticForYield"
+    val SyntacticFunction: TermName        = "SyntacticFunction"
+    val SyntacticFunctionType: TermName    = "SyntacticFunctionType"
+    val SyntacticIdent: TermName           = "SyntacticIdent"
+    val SyntacticImport: TermName          = "SyntacticImport"
+    val SyntacticMatch: TermName           = "SyntacticMatch"
+    val SyntacticNew: TermName             = "SyntacticNew"
+    val SyntacticObjectDef: TermName       = "SyntacticObjectDef"
+    val SyntacticPackageObjectDef: TermName = "SyntacticPackageObjectDef"
+    val SyntacticPartialFunction: TermName = "SyntacticPartialFunction"
+    val SyntacticPatDef: TermName          = "SyntacticPatDef"
+    val SyntacticSelectType: TermName      = "SyntacticSelectType"
+    val SyntacticSelectTerm: TermName      = "SyntacticSelectTerm"
+    val SyntacticTraitDef: TermName        = "SyntacticTraitDef"
+    val SyntacticTry: TermName             = "SyntacticTry"
+    val SyntacticTuple: TermName           = "SyntacticTuple"
+    val SyntacticTupleType: TermName       = "SyntacticTupleType"
+    val SyntacticTypeApplied: TermName     = "SyntacticTypeApplied"
+    val SyntacticValDef: TermName          = "SyntacticValDef"
+    val SyntacticValEq: TermName           = "SyntacticValEq"
+    val SyntacticValFrom: TermName         = "SyntacticValFrom"
+    val SyntacticVarDef: TermName          = "SyntacticVarDef"
+    val TermName: TermName                 = "TermName"
+    val tq: TermName                       = "tq"
+    val True : TermName                    = "True"
+    val TypeName: TermName                 = "TypeName"
+    val toList: TermName                   = "toList"
+    val toStats: TermName                  = "toStats"
+    val UnliftListElementwise: TermName    = "UnliftListElementwise"
+    val UnliftListOfListsElementwise: TermName = "UnliftListOfListsElementwise"
   }
 
-  implicit class ParadiseTpnme(tpnme: global.tpnme.type) {
-    val QUASIQUOTE_MODS: TypeName        = paradisetpnme.QUASIQUOTE_MODS
-    val QUASIQUOTE_TUPLE: TypeName       = paradisetpnme.QUASIQUOTE_TUPLE
-    val QUASIQUOTE_FUNCTION: TypeName    = paradisetpnme.QUASIQUOTE_FUNCTION
-    val QUASIQUOTE_REFINE_STAT: TypeName = paradisetpnme.QUASIQUOTE_REFINE_STAT
-    val QUASIQUOTE_EARLY_DEF: TypeName   = paradisetpnme.QUASIQUOTE_EARLY_DEF
+  implicit def paradiseTpnme(nme: global.tpnme.type): paradisetpnme.type = paradisetpnme
+
+  object paradisetpnme {
     val FlagSet: TypeName                = "FlagSet"
     val Modifiers: TypeName              = "Modifiers"
     val Option: TypeName                 = "Option"
     val CaseDef: TypeName                = "CaseDef"
     val Constant: TypeName               = "Constant"
+    val Liftable: TypeName               = "Liftable"
     val Name: TypeName                   = "Name"
+    val QUASIQUOTE_MODS: TypeName        = "$quasiquote$mods$"
+    val QUASIQUOTE_TUPLE: TypeName       = "$quasiquote$tuple$"
+    val QUASIQUOTE_FUNCTION: TypeName    = "$quasiquote$function$"
     val TermName: TypeName               = "TermName"
     val TypeName: TypeName               = "TypeName"
     val TypeDef: TypeName                = "TypeDef"
     val Tuple: TypeName                  = "Tuple"
-  }
-
-  object paradisetpnme {
-    val QUASIQUOTE_MODS: TypeName        = "$quasiquote$mods$"
-    val QUASIQUOTE_TUPLE: TypeName       = "$quasiquote$tuple$"
-    val QUASIQUOTE_FUNCTION: TypeName    = "$quasiquote$function$"
-    val QUASIQUOTE_REFINE_STAT: TypeName = "$quasiquote$refine$stat$"
-    val QUASIQUOTE_EARLY_DEF: TypeName   = "$quasiquote$early$def$"
+    val Unliftable: TypeName             = "Unliftable"
   }
 }

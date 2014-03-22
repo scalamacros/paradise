@@ -57,32 +57,35 @@ trait Definitions {
       }
     }
 
-    lazy val QuasiquoteCompatModule = getModuleIfDefined("org.scalamacros.quasiquotes.QuasiquoteCompat")
+    lazy val QuasiquoteCompatModule = getModuleIfDefined("scala.quasiquotes.QuasiquoteCompat")
     lazy val LiftableClass = getClassIfDefined("org.scalamacros.quasiquotes.Liftable")
 
+    private def termPath(fullname: String): Tree = {
+      val parts = fullname split "\\."
+      val prefixParts = parts.init
+      val lastName = TermName(parts.last)
+      if (prefixParts.isEmpty) Ident(lastName)
+      else {
+        val prefixTree = ((Ident(prefixParts.head): Tree) /: prefixParts.tail)(Select(_, _))
+        Select(prefixTree, lastName)
+      }
+    }
+
+    lazy val QuasiquoteCompatModuleRef = termPath(QuasiquoteCompatModule.fullName)
+
     class UniverseDependentTypes(universe: Tree) {
-      lazy val universeType = universe.tpe
-      lazy val universeSym = universe.symbol
-      lazy val nameType = universeMemberType(tpnme.Name)
-      lazy val termNameType = universeMemberType(tpnme.TypeName)
-      lazy val typeNameType = universeMemberType(tpnme.TermName)
-      lazy val modsType = universeMemberType(tpnme.Modifiers)
-      lazy val flagsType = universeMemberType(tpnme.FlagSet)
-      lazy val symbolType = universeMemberType(tpnme.Symbol)
-      lazy val treeType = universeMemberType(tpnme.Tree)
-      lazy val typeDefType = universeMemberType(tpnme.TypeDef)
-      lazy val caseDefType = universeMemberType(tpnme.CaseDef)
+      lazy val nameType         = universeMemberType(tpnme.Name)
+      lazy val modsType         = universeMemberType(tpnme.Modifiers)
+      lazy val flagsType        = universeMemberType(tpnme.FlagSet)
+      lazy val symbolType       = universeMemberType(tpnme.Symbol)
+      lazy val treeType         = universeMemberType(tpnme.Tree)
+      lazy val caseDefType      = universeMemberType(tpnme.CaseDef)
+      lazy val liftableType     = universeMemberType(tpnme.Liftable)
+      lazy val unliftableType   = universeMemberType(tpnme.Unliftable)
       lazy val iterableTreeType = appliedType(IterableClass, treeType)
-      lazy val iterableCaseDefType = appliedType(IterableClass, caseDefType)
-      lazy val iterableIterableTreeType = appliedType(IterableClass, iterableTreeType)
-      lazy val listTreeType = appliedType(ListClass, treeType)
+      lazy val listTreeType     = appliedType(ListClass, treeType)
       lazy val listListTreeType = appliedType(ListClass, listTreeType)
-      lazy val optionTreeType = appliedType(OptionClass, treeType)
-      lazy val optionNameType = appliedType(OptionClass, nameType)
-      lazy val typeType = universeMemberType(tpnme.Type)
-      lazy val constantType = universeMemberType(tpnme.Constant)
-      lazy val weakTypeTagType = universeMemberType(tpnme.WeakTypeTag)
-      lazy val exprType = universeMemberType(tpnme.Expr)
+
       def universeMemberType(name: TypeName) = {
         val tpe = universe.tpe.memberType(getTypeMember(universe.symbol, name))
         if (tpe.typeSymbol.typeParams.isEmpty) tpe
@@ -90,7 +93,7 @@ trait Definitions {
       }
     }
 
-    def isLiftableType(tp: Type) = tp <:< classExistentialType(LiftableClass)
+    def isListType(tp: Type)     = tp <:< classExistentialType(ListClass)
     def isIterableType(tp: Type) = tp <:< classExistentialType(IterableClass)
 
     def init() = {
