@@ -14,6 +14,11 @@ trait Definitions {
   object paradiseDefinitions {
     lazy val InheritedAttr = requiredClass[java.lang.annotation.Inherited]
 
+    lazy val TreeType = {
+      if (ApiUniverseClass != NoSymbol) typeRef(ApiUniverseClass.thisPrefix, ApiUniverseClass.info.member(newTypeName("Tree")), Nil)
+      else NoType
+    }
+
     lazy val QuasiquoteMacros = {
       // NOTE: we're forced to be binary compatible, therefore
       // we need to approximate the quasiquote API using synthetic symbols:
@@ -23,32 +28,34 @@ trait Definitions {
       //
       //      implicit class Quasiquote(ctx: StringContext) {
       //        protected trait api {
-      //          def apply(args: Any*): Any = macro ???
-      //          def unapply(subpatterns: Any*): Option[Any] = macro ???
+      //          def apply[T](args: T*): Tree = macro ???
+      //          def unapply(subpatterns: Any): Any = macro ???
       //        }
       //        object q extends api
       //        object tq extends api
       //        object cq extends api
       //        object pq extends api
+      //        object fq extends api
       //      }
       //   }
       if (ApiUniverseClass != NoSymbol) {
-        def enterNewMethod(owner: Symbol, name: String, param: Type, ret: Type, flags: Long): MethodSymbol = {
+        def enterNewMethod(owner: Symbol, name: String, tparams: List[MethodSymbol => Symbol], param: List[Symbol] => Type, ret: List[Symbol] => Type, flags: Long): MethodSymbol = {
           val m = owner.newMethod(newTermName(name), NoPosition, flags)
-          val ps = m.newSyntheticValueParams(List(param))
-          m.setInfoAndEnter(MethodType(ps, ret))
+          val ts = tparams.map(_(m))
+          val ps = m.newSyntheticValueParams(List(param(ts)))
+          m.setInfoAndEnter(if (ts.isEmpty) MethodType(ps, ret(ts)) else PolyType(ts, MethodType(ps, ret(ts))))
         }
 
         val impClass = ApiUniverseClass.newClassSymbol(newTypeName("Quasiquote"), NoPosition, IMPLICIT)
         impClass.setInfoAndEnter(ClassInfoType(List(typeOf[AnyRef]), newScope, impClass))
-        enterNewMethod(ApiUniverseClass, "Quasiquote", typeOf[StringContext], impClass.tpe, METHOD | IMPLICIT | SYNTHETIC)
+        enterNewMethod(ApiUniverseClass, "Quasiquote", Nil, _ => typeOf[StringContext], _ => impClass.tpe, METHOD | IMPLICIT | SYNTHETIC)
 
-        val flavors = List("q", "tq", "cq", "pq")
+        val flavors = List("q", "tq", "cq", "pq", "fq")
         flavors.flatMap(flavor => {
           val (m, c) = impClass.newModuleAndClassSymbol(newTermName(flavor), NoPosition, 0)
           c.setInfo(ClassInfoType(List(typeOf[AnyRef]), newScope, c))
-          val app = enterNewMethod(c, "apply", scalaRepeatedType(typeOf[Any]), typeOf[Any], MACRO)
-          val unapp = enterNewMethod(c, "unapply", scalaRepeatedType(typeOf[Any]), typeOf[Option[Any]], MACRO)
+          val app = enterNewMethod(c, "apply", List(_.newSyntheticTypeParam), ts => scalaRepeatedType(ts.head.tpe), _ => TreeType, MACRO)
+          val unapp = enterNewMethod(c, "unapply", Nil, _ => scalaRepeatedType(typeOf[Any]), _ => typeOf[Any], MACRO)
           m.setInfoAndEnter(c.tpe)
           List(app, unapp)
         })
