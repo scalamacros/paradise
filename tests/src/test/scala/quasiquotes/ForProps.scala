@@ -44,28 +44,28 @@ object ForProps extends QuasiquoteProperties("for") {
   property("construct/deconstruct for loop with fq") = test {
     val for0 = q"for(..$abcde) $fv"
     assertEqAst(for0, "for(a <- b; if c; d = e) f(v)")
-    // val q"for(..$enums) $body" = for0
-    // assert(enums ≈ abcde)
-    // assert(body ≈ fv)
+    val q"for(..$enums) $body" = for0
+    assert(enums ≈ abcde)
+    assert(body ≈ fv)
   }
 
   property("construct/deconstruct valfrom with fq") = test {
     assert(fq"$foobarbaz <- $fv" ≈ fq"foo @ Bar(baz) <- f(v)")
-    // val fq"$lhs <- $rhs" = fq"$foobarbaz <- $fv"
-    // assert(lhs ≈ foobarbaz)
-    // assert(rhs ≈ fv)
+    val fq"$lhs <- $rhs" = fq"$foobarbaz <- $fv"
+    assert(lhs ≈ foobarbaz)
+    assert(rhs ≈ fv)
   }
 
   property("construct/deconstruct valeq with fq") = test {
     assert(fq"$foobarbaz = $fv" ≈ fq"foo @ Bar(baz) = f(v)")
-    // val fq"$lhs = $rhs" = fq"$foobarbaz = $fv"
-    // assert(lhs ≈ foobarbaz)
-    // assert(rhs ≈ fv)
+    val fq"$lhs = $rhs" = fq"$foobarbaz = $fv"
+    assert(lhs ≈ foobarbaz)
+    assert(rhs ≈ fv)
   }
 
   property("construct/deconstruct filter with fq") = test {
     assert(fq"if $fv" ≈ fq"if f(v)")
-    // val fq"if $cond" = fq"if $fv"
-    // assert(cond ≈ fv)
+    val fq"if $cond" = fq"if $fv"
+    assert(cond ≈ fv)
   }
 }

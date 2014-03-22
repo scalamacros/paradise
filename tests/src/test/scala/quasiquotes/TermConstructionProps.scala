@@ -213,8 +213,8 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
   }
 
   property("SI-8148") = test {
-    // val q"($a, $b) => ${_}" = q"_ + _"
-    // assert(a.name != b.name)
+    val q"($a, $b) => ${_}" = q"_ + _"
+    assert(a.name != b.name)
   }
 
   property("SI-7275 a") = test {
@@ -257,38 +257,38 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
   }
 
   property("remove synthetic unit") = test {
-    // val q"{ ..$stats1 }" = q"{ def x = 2 }"
-    // assert(stats1 ≈ List(q"def x = 2"))
-    // val q"{ ..$stats2 }" = q"{ class X }"
-    // assert(stats2 ≈ List(q"class X"))
-    // val q"{ ..$stats3 }" = q"{ type X = Int }"
-    // assert(stats3 ≈ List(q"type X = Int"))
-    // val q"{ ..$stats4 }" = q"{ val x = 2 }"
-    // assert(stats4 ≈ List(q"val x = 2"))
+    val q"{ ..$stats1 }" = q"{ def x = 2 }"
+    assert(stats1 ≈ List(q"def x = 2"))
+    val q"{ ..$stats2 }" = q"{ class X }"
+    assert(stats2 ≈ List(q"class X"))
+    val q"{ ..$stats3 }" = q"{ type X = Int }"
+    assert(stats3 ≈ List(q"type X = Int"))
+    val q"{ ..$stats4 }" = q"{ val x = 2 }"
+    assert(stats4 ≈ List(q"val x = 2"))
   }
 
   property("don't remove user-defined unit") = test {
-    // val q"{ ..$stats }" = q"{ def x = 2; () }"
-    // assert(stats ≈ List(q"def x = 2", q"()"))
+    val q"{ ..$stats }" = q"{ def x = 2; () }"
+    assert(stats ≈ List(q"def x = 2", q"()"))
   }
 
   property("empty-tree is not a block") = test {
-    // assertThrows[MatchError] {
-    //   val q"{ ..$stats1 }" = q" "
-    // }
+    assertThrows[MatchError] {
+      val q"{ ..$stats1 }" = q" "
+    }
   }
 
   property("empty block is synthetic unit") = test {
-    // val q"()" = q"{}"
-    // val q"{..$stats}" = q"{}"
-    // assert(stats.isEmpty)
-    // assertEqAst(q"{..$stats}", "{}")
-    // assertEqAst(q"{..$stats}", "()")
+    val q"()" = q"{}"
+    val q"{..$stats}" = q"{}"
+    assert(stats.isEmpty)
+    assertEqAst(q"{..$stats}", "{}")
+    assertEqAst(q"{..$stats}", "()")
   }
 
   property("consistent variable order") = test {
-    // val q"$a = $b = $c = $d = $e = $f = $g = $h = $k = $l" = q"a = b = c = d = e = f = g = h = k = l"
-    // assert(a ≈ q"a" && b ≈ q"b" && c ≈ q"c" && d ≈ q"d" && e ≈ q"e" && g ≈ q"g" && h ≈ q"h" && k ≈ q"k" && l ≈ q"l")
+    val q"$a = $b = $c = $d = $e = $f = $g = $h = $k = $l" = q"a = b = c = d = e = f = g = h = k = l"
+    assert(a ≈ q"a" && b ≈ q"b" && c ≈ q"c" && d ≈ q"d" && e ≈ q"e" && g ≈ q"g" && h ≈ q"h" && k ≈ q"k" && l ≈ q"l")
   }
 
   property("SI-8385 a") = test {
