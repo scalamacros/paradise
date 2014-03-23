@@ -8,6 +8,7 @@ trait Typers extends Macros {
   import definitions._
   import paradiseDefinitions._
   import scala.reflect.internal.Flags._
+  import compat.symbolTable.duplicateAndKeepPositions
 
   trait ParadiseTyper extends Typer with ParadiseTyperContextErrors {
     import ParadiseTyperErrorGen._

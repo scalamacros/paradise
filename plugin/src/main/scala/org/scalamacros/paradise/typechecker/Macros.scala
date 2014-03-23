@@ -6,6 +6,7 @@ trait Macros {
 
   import global._
   import treeInfo._
+  import compat.symbolTable.duplicateAndKeepPositions
   import scala.language.reflectiveCalls
   import scala.reflect.internal.util.Statistics
   import scala.tools.nsc.typechecker.MacrosStats._

@@ -8,6 +8,7 @@ trait Namers {
   import definitions._
   import scala.reflect.internal.Flags._
   import scala.language.reflectiveCalls
+  import compat.symbolTable.duplicateAndKeepPositions
 
   trait ParadiseNamer extends Namer with ParadiseNamerContextErrors {
     import NamerErrorGen._

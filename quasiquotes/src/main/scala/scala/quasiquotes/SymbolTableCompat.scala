@@ -181,5 +181,11 @@ trait SymbolTableCompat { self =>
     implicit class RichModifiers(mods: Modifiers) {
       def isLocalToThis = mods hasFlag LOCAL
     }
+
+    def duplicateAndKeepPositions(tree: Tree) = {
+      // global.duplicator won't work, because it focuses range positions
+      val duplicator = new Transformer { override val treeCopy = newStrictTreeCopier }
+      duplicator.transform(tree)
+    }
   }
 }
