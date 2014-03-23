@@ -21,7 +21,8 @@ object build extends Build {
         println(s"Going for custom scala home at $scalaHome")
         Some(file(scalaHome))
       } else None
-    }
+    },
+    sources in (Compile, doc) ~= (_ filter (_.getName endsWith ".scala"))
     // TODO: how to I make this recursion work?
     // run <<= run in Compile in sandbox,
     // test <<= test in Test in tests
@@ -139,8 +140,7 @@ object build extends Build {
   ) settings (
     sharedSettings ++ usePluginSettings: _*
   ) settings (
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    publishArtifact in Compile := false
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _)
   )
 
   lazy val tests = Project(
