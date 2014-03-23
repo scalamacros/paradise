@@ -7,13 +7,7 @@ package parser
 import scala.collection.mutable
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
-import scala.tools.nsc.util.CharArrayReader
-import scala.reflect.internal.util.SourceFile
-import scala.xml.{ Text, TextBuffer }
-import scala.xml.parsing.MarkupParserCommon
-import scala.xml.Utility.{ isNameStart, isNameChar, isSpace }
 import scala.reflect.internal.Chars.{ SU, LF }
-import scala.tools.nsc.ast.parser.Tokens
 
 // XXX/Note: many/most of the functions in here are almost direct cut and pastes
 // from another file - scala.xml.parsing.MarkupParser, it looks like.
@@ -25,14 +19,8 @@ import scala.tools.nsc.ast.parser.Tokens
 // I rewrote most of these, but not as yet the library versions: so if you are
 // tempted to touch any of these, please be aware of that situation and try not
 // to let it get any worse.  -- paulp
-
-/** This trait ...
- *
- *  @author  Burak Emir
- *  @version 1.0
- */
-trait ParadiseMarkupParsers {
-  self: ParadiseParsers =>
+trait MarkupParsers {
+  self: Parsers =>
 
   case object MissingEndTagControl extends ControlThrowable {
     override def getMessage = "start tag was here: "
@@ -48,9 +36,9 @@ trait ParadiseMarkupParsers {
 
   import global._
 
-  class ParadiseMarkupParser(parser: ParadiseSourceFileParser, final val preserveWS: Boolean) extends ParadiseMarkupParserCommon {
-
-    import Tokens.{ EMPTY, LBRACE, RBRACE }
+  class MarkupParser(parser: SourceFileParser, final val preserveWS: Boolean) extends MarkupParserCommon {
+    import Utility.{ isNameStart, isSpace }
+    import Tokens.{ LBRACE, RBRACE }
 
     type PositionType = Position
     type InputType    = CharArrayReader
@@ -88,7 +76,7 @@ trait ParadiseMarkupParsers {
 
     var xEmbeddedBlock = false
 
-    private var debugLastStartElement = new mutable.Stack[(Int, String)]
+    private val debugLastStartElement = new mutable.Stack[(Int, String)]
     private def debugLastPos = debugLastStartElement.top._1
     private def debugLastElem = debugLastStartElement.top._2
 
@@ -106,7 +94,7 @@ trait ParadiseMarkupParsers {
      */
     def xCheckEmbeddedBlock: Boolean = {
       // attentions, side-effect, used in xText
-      xEmbeddedBlock = (ch == '{') && { nextch; (ch != '{') }
+      xEmbeddedBlock = (ch == '{') && { nextch(); (ch != '{') }
       xEmbeddedBlock
     }
 
@@ -122,8 +110,7 @@ trait ParadiseMarkupParsers {
       while (isNameStart(ch)) {
         val start = curOffset
         val key = xName
-        xEQ
-        val delim = ch
+        xEQ()
         val mid = curOffset
         val value: Tree = ch match {
           case '"' | '\'' =>
@@ -136,7 +123,7 @@ trait ParadiseMarkupParsers {
             }
 
           case '{'  =>
-            nextch
+            nextch()
             xEmbeddedExpr
           case SU =>
             throw TruncatedXMLControl
@@ -149,7 +136,7 @@ trait ParadiseMarkupParsers {
 
         aMap(key) = value
         if (ch != '/' && ch != '>')
-          xSpace
+          xSpace()
       }
       aMap
     }
@@ -180,22 +167,31 @@ trait ParadiseMarkupParsers {
       xTakeUntil(handle.comment, () => r2p(start, start, curOffset), "-->")
     }
 
-    def appendText(pos: Position, ts: Buffer[Tree], txt: String) {
-      val toAppend =
-        if (preserveWS) Seq(txt)
-        else TextBuffer.fromString(txt).toText map (_.text)
+    def appendText(pos: Position, ts: Buffer[Tree], txt: String): Unit = {
+      def append(t: String) = ts append handle.text(pos, t)
 
-      toAppend foreach (t => ts append handle.text(pos, t))
+      if (preserveWS) append(txt)
+      else {
+        val sb = new StringBuilder()
+
+        txt foreach { c =>
+          if (!isSpace(c)) sb append c
+          else if (sb.isEmpty || !isSpace(sb.last)) sb append ' '
+        }
+
+        val trimmed = sb.toString.trim
+        if (!trimmed.isEmpty) append(trimmed)
+      }
     }
 
     /** adds entity/character to ts as side-effect
      *  @precond ch == '&'
      */
     def content_AMP(ts: ArrayBuffer[Tree]) {
-      nextch
+      nextch()
       val toAppend = ch match {
         case '#' => // CharacterRef
-          nextch
+          nextch()
           val theChar = handle.text(tmppos, xCharRef)
           xToken(';')
           theChar
@@ -218,17 +214,14 @@ trait ParadiseMarkupParsers {
 
     /** Returns true if it encounters an end tag (without consuming it),
      *  appends trees to ts as side-effect.
-     *
-     *  @param ts ...
-     *  @return   ...
      */
     private def content_LT(ts: ArrayBuffer[Tree]): Boolean = {
       if (ch == '/')
         return true   // end tag
 
       val toAppend = ch match {
-        case '!'    => nextch ; if (ch =='[') xCharData else xComment // CDATA or Comment
-        case '?'    => nextch ; xProcInstr                            // PI
+        case '!'    => nextch() ; if (ch =='[') xCharData else xComment // CDATA or Comment
+        case '?'    => nextch() ; xProcInstr                            // PI
         case _      => element                                        // child node
       }
 
@@ -245,7 +238,7 @@ trait ParadiseMarkupParsers {
           tmppos = o2p(curOffset)
           ch match {
             // end tag, cdata, comment, pi or child node
-            case '<'  => nextch ; if (content_LT(ts)) return ts
+            case '<'  => nextch() ; if (content_LT(ts)) return ts
             // either the character '{' or an embedded scala block }
             case '{'  => content_BRACE(tmppos, ts)  // }
             // EntityRef or CharRef
@@ -267,7 +260,7 @@ trait ParadiseMarkupParsers {
       val (qname, attrMap) = xTag(())
       if (ch == '/') { // empty element
         xToken("/>")
-        handle.element(r2p(start, start, curOffset), qname, attrMap, true, new ListBuffer[Tree])
+        handle.element(r2p(start, start, curOffset), qname, attrMap, empty = true, new ListBuffer[Tree])
       }
       else { // handle content
         xToken('>')
@@ -277,11 +270,11 @@ trait ParadiseMarkupParsers {
         debugLastStartElement.push((start, qname))
         val ts = content
         xEndTag(qname)
-        debugLastStartElement.pop
+        debugLastStartElement.pop()
         val pos = r2p(start, start, curOffset)
         qname match {
           case "xml:group" => handle.group(pos, ts)
-          case _ => handle.element(pos, qname, attrMap, false, ts)
+          case _ => handle.element(pos, qname, attrMap, empty = false, ts)
         }
       }
     }
@@ -296,12 +289,12 @@ trait ParadiseMarkupParsers {
 
       while (ch != SU) {
         if (ch == '}') {
-          if (charComingAfter(nextch) == '}') nextch
+          if (charComingAfter(nextch()) == '}') nextch()
           else errorBraces()
         }
 
         buf append ch
-        nextch
+        nextch()
         if (xCheckEmbeddedBlock || ch == '<' ||  ch == '&')
           return done
       }
@@ -348,12 +341,12 @@ trait ParadiseMarkupParsers {
         content_LT(ts)
 
         // parse more XML ?
-        if (charComingAfter(xSpaceOpt) == '<') {
-          xSpaceOpt
+        if (charComingAfter(xSpaceOpt()) == '<') {
+          xSpaceOpt()
           while (ch == '<') {
-            nextch
+            nextch()
             ts append element
-            xSpaceOpt
+            xSpaceOpt()
           }
           handle.makeXMLseq(r2p(start, start, curOffset), ts)
         }
@@ -374,7 +367,7 @@ trait ParadiseMarkupParsers {
         saving[Boolean, Tree](handle.isPattern, handle.isPattern = _) {
           handle.isPattern = true
           val tree = xPattern
-          xSpaceOpt
+          xSpaceOpt()
           tree
         }
       },
@@ -409,13 +402,13 @@ trait ParadiseMarkupParsers {
      *                  | Name [S] '/' '>'
      */
     def xPattern: Tree = {
-      var start = curOffset
+      val start = curOffset
       val qname = xName
       debugLastStartElement.push((start, qname))
-      xSpaceOpt
+      xSpaceOpt()
 
       val ts = new ArrayBuffer[Tree]
-      val isEmptyTag = (ch == '/') && { nextch ; true }
+      val isEmptyTag = (ch == '/') && { nextch() ; true }
       xToken('>')
 
       if (!isEmptyTag) {
@@ -425,13 +418,13 @@ trait ParadiseMarkupParsers {
           if (xEmbeddedBlock) ts ++= xScalaPatterns
           else ch match {
             case '<'  => // tag
-              nextch
+              nextch()
               if (ch != '/') ts append xPattern   // child
               else return false                   // terminate
 
             case '{'  => // embedded Scala patterns
               while (ch == '{') {
-                nextch
+                nextch()
                 ts ++= xScalaPatterns
               }
               assert(!xEmbeddedBlock, "problem with embedded block")
@@ -449,10 +442,10 @@ trait ParadiseMarkupParsers {
 
         while (doPattern) { }  // call until false
         xEndTag(qname)
-        debugLastStartElement.pop
+        debugLastStartElement.pop()
       }
 
       handle.makeXMLpat(r2p(start, start, curOffset), qname, ts)
     }
-  } /* class ParadiseMarkupParser */
+  } /* class MarkupParser */
 }

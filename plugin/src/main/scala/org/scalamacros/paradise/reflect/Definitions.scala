@@ -12,7 +12,19 @@ trait Definitions {
   import definitions._
 
   object paradiseDefinitions {
+    private def enterNewMethod(owner: Symbol, name: String, tparams: List[MethodSymbol => Symbol], param: List[Symbol] => Type, ret: List[Symbol] => Type, flags: Long): MethodSymbol = {
+      val m = owner.newMethod(newTermName(name), NoPosition, flags)
+      val ts = tparams.map(_(m))
+      val ps = m.newSyntheticValueParams(List(param(ts)))
+      m.setInfoAndEnter(if (ts.isEmpty) MethodType(ps, ret(ts)) else PolyType(ts, MethodType(ps, ret(ts))))
+    }
+
     lazy val InheritedAttr = requiredClass[java.lang.annotation.Inherited]
+
+    lazy val TreeType = {
+      if (ApiUniverseClass != NoSymbol) typeRef(ApiUniverseClass.thisPrefix, ApiUniverseClass.info.member(newTypeName("Tree")), Nil)
+      else NoType
+    }
 
     lazy val QuasiquoteMacros = {
       // NOTE: we're forced to be binary compatible, therefore
@@ -23,32 +35,27 @@ trait Definitions {
       //
       //      implicit class Quasiquote(ctx: StringContext) {
       //        protected trait api {
-      //          def apply(args: Any*): Any = macro ???
-      //          def unapply(subpatterns: Any*): Option[Any] = macro ???
+      //          def apply[T](args: T*): Tree = macro ???
+      //          def unapply(subpatterns: Any): Any = macro ???
       //        }
       //        object q extends api
       //        object tq extends api
       //        object cq extends api
       //        object pq extends api
+      //        object fq extends api
       //      }
       //   }
       if (ApiUniverseClass != NoSymbol) {
-        def enterNewMethod(owner: Symbol, name: String, param: Type, ret: Type, flags: Long): MethodSymbol = {
-          val m = owner.newMethod(newTermName(name), NoPosition, flags)
-          val ps = m.newSyntheticValueParams(List(param))
-          m.setInfoAndEnter(MethodType(ps, ret))
-        }
-
         val impClass = ApiUniverseClass.newClassSymbol(newTypeName("Quasiquote"), NoPosition, IMPLICIT)
         impClass.setInfoAndEnter(ClassInfoType(List(typeOf[AnyRef]), newScope, impClass))
-        enterNewMethod(ApiUniverseClass, "Quasiquote", typeOf[StringContext], impClass.tpe, METHOD | IMPLICIT | SYNTHETIC)
+        enterNewMethod(ApiUniverseClass, "Quasiquote", Nil, _ => typeOf[StringContext], _ => impClass.tpe, METHOD | IMPLICIT | SYNTHETIC)
 
-        val flavors = List("q", "tq", "cq", "pq")
+        val flavors = List("q", "tq", "cq", "pq", "fq")
         flavors.flatMap(flavor => {
           val (m, c) = impClass.newModuleAndClassSymbol(newTermName(flavor), NoPosition, 0)
           c.setInfo(ClassInfoType(List(typeOf[AnyRef]), newScope, c))
-          val app = enterNewMethod(c, "apply", scalaRepeatedType(typeOf[Any]), typeOf[Any], MACRO)
-          val unapp = enterNewMethod(c, "unapply", scalaRepeatedType(typeOf[Any]), typeOf[Option[Any]], MACRO)
+          val app = enterNewMethod(c, "apply", List(_.newSyntheticTypeParam), ts => scalaRepeatedType(ts.head.tpe), _ => TreeType, MACRO)
+          val unapp = enterNewMethod(c, "unapply", Nil, _ => scalaRepeatedType(typeOf[Any]), _ => typeOf[Any], MACRO)
           m.setInfoAndEnter(c.tpe)
           List(app, unapp)
         })
@@ -57,32 +64,63 @@ trait Definitions {
       }
     }
 
-    lazy val QuasiquoteCompatModule = getModuleIfDefined("org.scalamacros.quasiquotes.QuasiquoteCompat")
-    lazy val LiftableClass = getClassIfDefined("org.scalamacros.quasiquotes.Liftable")
+    lazy val LiftableClass = {
+      // trait Liftable[T] {
+      //   def apply(value: T): Tree
+      // }
+      if (ApiUniverseClass != NoSymbol) {
+        val liftable = ApiUniverseClass.newClassSymbol(newTypeName("Liftable"), NoPosition, ABSTRACT | INTERFACE | TRAIT)
+        val t = liftable.newSyntheticTypeParam
+        liftable.setInfoAndEnter(PolyType(List(t), ClassInfoType(List(typeOf[AnyRef]), newScope, liftable)))
+        enterNewMethod(liftable, "apply", Nil, _ => t.tpe, _ => TreeType, DEFERRED)
+        liftable
+      } else {
+        NoSymbol
+      }
+    }
+
+    lazy val UnliftableClass = {
+      // trait Unliftable[T] {
+      //   def unapply(tree: Tree): Option[T]
+      // }
+      if (ApiUniverseClass != NoSymbol) {
+        val unliftable = ApiUniverseClass.newClassSymbol(newTypeName("Unliftable"), NoPosition, ABSTRACT | INTERFACE | TRAIT)
+        val t = unliftable.newSyntheticTypeParam
+        unliftable.setInfoAndEnter(PolyType(List(t), ClassInfoType(List(typeOf[AnyRef]), newScope, unliftable)))
+        enterNewMethod(unliftable, "unapply", Nil, _ => TreeType, _ => appliedType(OptionClass, t.tpe), DEFERRED)
+      } else {
+        NoSymbol
+      }
+    }
+
+    lazy val QuasiquoteCompatModule = getModuleIfDefined("scala.quasiquotes.QuasiquoteCompat")
+
+    private def termPath(fullname: String): Tree = {
+      val parts = fullname split "\\."
+      val prefixParts = parts.init
+      val lastName = TermName(parts.last)
+      if (prefixParts.isEmpty) Ident(lastName)
+      else {
+        val prefixTree = ((Ident(prefixParts.head): Tree) /: prefixParts.tail)(Select(_, _))
+        Select(prefixTree, lastName)
+      }
+    }
+
+    lazy val QuasiquoteCompatModuleRef = termPath(QuasiquoteCompatModule.fullName)
 
     class UniverseDependentTypes(universe: Tree) {
-      lazy val universeType = universe.tpe
-      lazy val universeSym = universe.symbol
-      lazy val nameType = universeMemberType(tpnme.Name)
-      lazy val termNameType = universeMemberType(tpnme.TypeName)
-      lazy val typeNameType = universeMemberType(tpnme.TermName)
-      lazy val modsType = universeMemberType(tpnme.Modifiers)
-      lazy val flagsType = universeMemberType(tpnme.FlagSet)
-      lazy val symbolType = universeMemberType(tpnme.Symbol)
-      lazy val treeType = universeMemberType(tpnme.Tree)
-      lazy val typeDefType = universeMemberType(tpnme.TypeDef)
-      lazy val caseDefType = universeMemberType(tpnme.CaseDef)
+      lazy val nameType         = universeMemberType(tpnme.Name)
+      lazy val modsType         = universeMemberType(tpnme.Modifiers)
+      lazy val flagsType        = universeMemberType(tpnme.FlagSet)
+      lazy val symbolType       = universeMemberType(tpnme.Symbol)
+      lazy val treeType         = universeMemberType(tpnme.Tree)
+      lazy val caseDefType      = universeMemberType(tpnme.CaseDef)
+      lazy val liftableType     = universeMemberType(tpnme.Liftable)
+      lazy val unliftableType   = universeMemberType(tpnme.Unliftable)
       lazy val iterableTreeType = appliedType(IterableClass, treeType)
-      lazy val iterableCaseDefType = appliedType(IterableClass, caseDefType)
-      lazy val iterableIterableTreeType = appliedType(IterableClass, iterableTreeType)
-      lazy val listTreeType = appliedType(ListClass, treeType)
+      lazy val listTreeType     = appliedType(ListClass, treeType)
       lazy val listListTreeType = appliedType(ListClass, listTreeType)
-      lazy val optionTreeType = appliedType(OptionClass, treeType)
-      lazy val optionNameType = appliedType(OptionClass, nameType)
-      lazy val typeType = universeMemberType(tpnme.Type)
-      lazy val constantType = universeMemberType(tpnme.Constant)
-      lazy val weakTypeTagType = universeMemberType(tpnme.WeakTypeTag)
-      lazy val exprType = universeMemberType(tpnme.Expr)
+
       def universeMemberType(name: TypeName) = {
         val tpe = universe.tpe.memberType(getTypeMember(universe.symbol, name))
         if (tpe.typeSymbol.typeParams.isEmpty) tpe
@@ -90,11 +128,13 @@ trait Definitions {
       }
     }
 
-    def isLiftableType(tp: Type) = tp <:< classExistentialType(LiftableClass)
+    def isListType(tp: Type)     = tp <:< classExistentialType(ListClass)
     def isIterableType(tp: Type) = tp <:< classExistentialType(IterableClass)
 
     def init() = {
       QuasiquoteMacros
+      LiftableClass
+      UnliftableClass
     }
   }
 }

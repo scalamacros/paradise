@@ -10,7 +10,7 @@ class IsoTest extends FunSuite {
       val equiv = foo(Foo(23, "foo", true))
       def typed[T](t: => T) {}
       typed[(Int, String, Boolean)](equiv)
-      println(equiv)
+      // println(equiv)
     }
   }
 }
