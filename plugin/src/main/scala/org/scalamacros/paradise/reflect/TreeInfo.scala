@@ -5,6 +5,7 @@ trait TreeInfo {
   self: Enrichments =>
 
   import global._
+  import compat.build._
 
   implicit class ParadiseTreeInfo(treeInfo: global.treeInfo.type) {
     def primaryConstructorArity(tree: ClassDef): Int = treeInfo.firstConstructor(tree.impl.body) match {
@@ -19,7 +20,7 @@ trait TreeInfo {
     // TODO: no immediate idea how to write this in a sane way
     def getAnnotationZippers(tree: Tree): List[AnnotationZipper] = {
       def loop[T <: Tree](tree: T, deep: Boolean): List[AnnotationZipper] = tree match {
-        case compat.SyntacticClassDef(mods, name, tparams, ctormods, vparamss, earlyDefs, parents, selfdef, body) =>
+        case SyntacticClassDef(mods, name, tparams, ctormods, vparamss, earlyDefs, parents, selfdef, body) =>
           val cdef = tree.asInstanceOf[ClassDef]
           val czippers = mods.annotations.map(ann => {
             val annottee = cdef.copy(mods = mods.mapAnnotations(_ diff List(ann)))
@@ -38,10 +39,10 @@ trait TreeInfo {
               AnnotationZipper(ann, vparam1: ValDef, _) <- loop(vparam, deep = false)
               vparams1 = vparams.updated(vparams.indexOf(vparam), vparam1)
               vparamss1 = vparamss.updated(vparamss.indexOf(vparams), vparams1)
-            } yield AnnotationZipper(ann, vparam1, compat.SyntacticClassDef(mods, name, tparams, ctormods, vparamss1, earlyDefs, parents, selfdef, body))
+            } yield AnnotationZipper(ann, vparam1, SyntacticClassDef(mods, name, tparams, ctormods, vparamss1, earlyDefs, parents, selfdef, body))
             czippers ++ tzippers ++ vzippers
           }
-        case compat.SyntacticTraitDef(mods, name, tparams, earlyDefs, parents, selfdef, body) =>
+        case SyntacticTraitDef(mods, name, tparams, earlyDefs, parents, selfdef, body) =>
           val tdef = tree.asInstanceOf[ClassDef]
           val czippers = mods.annotations.map(ann => {
             val annottee = tdef.copy(mods = mods.mapAnnotations(_ diff List(ann)))

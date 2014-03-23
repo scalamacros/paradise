@@ -96,7 +96,7 @@ object build extends Build {
     id   = "quasiquotes",
     base = file("quasiquotes")
   ) settings (
-    publishableSettings : _*
+    publishableSettings ++ usePluginSettings : _*
   ) settings (
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _)
   )
@@ -109,15 +109,15 @@ object build extends Build {
   ) settings (
     resourceDirectory in Compile <<= baseDirectory(_ / "src" / "main" / "scala" / "org" / "scalamacros" / "paradise" / "embedded"),
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
-    Keys.`package` := {
-      val _ = (Keys.`package` in Compile in quasiquotes).value
-      (Keys.`package` in Compile).value
-    },
-    publish := {
-      val _ = (publish in quasiquotes).value
-      publish.value
-    }
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _)
+    // Keys.`package` := {
+    //   val _ = (Keys.`package` in Compile in quasiquotes).value
+    //   (Keys.`package` in Compile).value
+    // },
+    // publish := {
+    //   val _ = (publish in quasiquotes).value
+    //   publish.value
+    // }
   )
 
   lazy val usePluginSettings = Seq(
