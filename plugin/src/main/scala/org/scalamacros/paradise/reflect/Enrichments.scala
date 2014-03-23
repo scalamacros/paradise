@@ -10,15 +10,16 @@ trait Enrichments extends Definitions
                      with StdNames
                      with TreeInfo
                      with StdAttachments
-                     with Trees
                      with ReflectionUtils
                      with Mirrors
                      with Symbols
                      with TreeGen
                      with Types
-                     with ReplIntegration {
+                     with ReplIntegration
+                     with Names { self =>
 
   val global: NscGlobal
+  lazy val compat = new { val global: self.global.type = self.global } with scala.quasiquotes.SymbolTableCompat
   implicit def paradiseSettings(settings: NscSettings) = ParadiseSettings
   def installationFailure() = global.abort("failed to install macro paradise plugin")
 }
