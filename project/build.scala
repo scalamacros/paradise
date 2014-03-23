@@ -99,8 +99,7 @@ object build extends Build {
   ) settings (
     publishableSettings ++ usePluginSettings : _*
   ) settings (
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    publishArtifact in packageDoc := false
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _)
   )
 
   lazy val plugin = Project(
