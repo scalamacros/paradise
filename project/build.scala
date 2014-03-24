@@ -23,9 +23,6 @@ object build extends Build {
       } else None
     },
     sources in (Compile, doc) ~= (_ filter (_.getName endsWith ".scala"))
-    // TODO: how to I make this recursion work?
-    // run <<= run in Compile in sandbox,
-    // test <<= test in Test in tests
   )
 
   lazy val publishableSettings = sharedSettings ++ Seq(
@@ -93,6 +90,14 @@ object build extends Build {
     }
   }
 
+  lazy val root = Project(
+    id = "root",
+    base = file("root")
+  ) settings (
+    test in Test := (test in tests in Test).value,
+    publish := {}
+  ) aggregate (quasiquotes, plugin)
+
   lazy val quasiquotes = Project(
     id   = "quasiquotes",
     base = file("quasiquotes")
@@ -111,14 +116,6 @@ object build extends Build {
     resourceDirectory in Compile <<= baseDirectory(_ / "src" / "main" / "scala" / "org" / "scalamacros" / "paradise" / "embedded"),
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _)
-    // Keys.`package` := {
-    //   val _ = (Keys.`package` in Compile in quasiquotes).value
-    //   (Keys.`package` in Compile).value
-    // },
-    // publish := {
-    //   val _ = (publish in quasiquotes).value
-    //   publish.value
-    // }
   )
 
   lazy val usePluginSettings = Seq(
