@@ -107,7 +107,7 @@ object build extends Build {
     publishableSettings : _*
   ) settings (
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full),
+    addCompilerPlugin("org.scalamacros" % "paradise_2.10.4" % "2.0.0-M5"),
     scalaHome := {
       if (!sys.props("java.version").startsWith("1.6")) throw new Exception("can only compile quasiquotes with Java 1.6")
       scalaHome.value
