@@ -1,5 +1,7 @@
 import sbt._
 import Keys._
+import sbtassembly.Plugin._
+import AssemblyKeys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
@@ -102,21 +104,32 @@ object build extends Build {
     id   = "quasiquotes",
     base = file("quasiquotes")
   ) settings (
-    publishableSettings ++ usePluginSettings : _*
+    publishableSettings : _*
   ) settings (
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _)
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full)
   )
 
   lazy val plugin = Project(
     id   = "paradise",
     base = file("plugin")
   ) settings (
-    publishableSettings : _*
+    publishableSettings ++ assemblySettings : _*
   ) settings (
     resourceDirectory in Compile <<= baseDirectory(_ / "src" / "main" / "scala" / "org" / "scalamacros" / "paradise" / "embedded"),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _)
-  )
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _ % "provided"),
+    test in assembly := {},
+    jarName in assembly := name.value + "_" + scalaVersion.value + "-" + version.value + "-assembly.jar",
+    assemblyOption in assembly ~= { _.copy(includeScala = false) },
+    Keys.`package` in Compile := {
+      val slimJar = (Keys.`package` in Compile).value
+      val fatJar = new File(crossTarget.value + "/" + (jarName in assembly).value)
+      val _ = assembly.value
+      IO.copy(List(fatJar -> slimJar), overwrite = true)
+      slimJar
+    }
+  ) dependsOn (quasiquotes)
 
   lazy val usePluginSettings = Seq(
     scalacOptions in Compile <++= (Keys.`package` in (plugin, Compile)) map { (jar: File) =>
@@ -137,7 +150,7 @@ object build extends Build {
     sharedSettings ++ usePluginSettings: _*
   ) settings (
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _)
-  )
+  ) dependsOn (quasiquotes)
 
   lazy val tests = Project(
     id   = "tests",
