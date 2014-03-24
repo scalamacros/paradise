@@ -2,6 +2,7 @@ import sbt._
 import Keys._
 import sbtassembly.Plugin._
 import AssemblyKeys._
+import com.typesafe.sbt.pgp.PgpKeys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
@@ -131,7 +132,17 @@ object build extends Build {
       val fatJar = new File(crossTarget.value + "/" + (jarName in assembly).value)
       val _ = assembly.value
       IO.copy(List(fatJar -> slimJar), overwrite = true)
+      println("package: merged paradise and quasiquotes and produced a fat JAR")
       slimJar
+    },
+    packagedArtifact in Compile in packageBin := {
+      val temp = (packagedArtifact in Compile in packageBin).value
+      val (art, slimJar) = temp
+      val fatJar = new File(crossTarget.value + "/" + (jarName in assembly).value)
+      val _ = assembly.value
+      IO.copy(List(fatJar -> slimJar), overwrite = true)
+      println("packagedArtifact: merged paradise and quasiquotes and produced a fat JAR")
+      (art, slimJar)
     }
   ) dependsOn (quasiquotes)
 
