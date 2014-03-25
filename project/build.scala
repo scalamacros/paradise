@@ -109,10 +109,7 @@ object build extends Build {
   ) settings (
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0-M5" cross CrossVersion.full),
-    scalaHome := {
-      if (!sys.props("java.version").startsWith("1.6")) throw new Exception("can only compile quasiquotes with Java 1.6")
-      scalaHome.value
-    }
+    javacOptions ++= Seq("-target", "1.6")
   )
 
   lazy val plugin = Project(
