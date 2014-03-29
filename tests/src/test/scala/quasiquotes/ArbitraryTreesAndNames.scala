@@ -1,7 +1,6 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
 import scala.reflect.runtime.universe._, Flag._
 import scala.language.implicitConversions
-import scala.quasiquotes.RuntimeLiftables._
 
 trait ArbitraryTreesAndNames {
   def smallList[T](size: Int, g: Gen[T]) = {
@@ -266,8 +265,8 @@ trait ArbitraryTreesAndNames {
   def genTreeIsTypeWrapped(size: Int) =
     for(tit <- genTreeIsType(size)) yield TreeIsType(tit)
 
-  implicit val liftTreeIsTerm = Liftable[TreeIsTerm] { _.tree }
-  implicit val liftTreeIsType = Liftable[TreeIsType] { _.tree }
+  implicit val liftTreeIsTerm = new Liftable[TreeIsTerm] { def apply(value: TreeIsTerm): Tree = value.tree }
+  implicit val liftTreeIsType = new Liftable[TreeIsType] { def apply(value: TreeIsType): Tree = value.tree }
   implicit def treeIsTerm2tree(tit: TreeIsTerm): Tree = tit.tree
   implicit def treeIsType2tree(tit: TreeIsType): Tree = tit.tree
 
