@@ -7,9 +7,3 @@ package object quasiquotes {
   val globalFreshNameCreator = new FreshNameCreator
   val internal: QuasiquoteCompat { val u: ru.type } = QuasiquoteCompat[ru.type](ru)
 }
-
-package quasiquotes {
-  object RuntimeLiftables extends {
-    val u: ru.type = ru
-  } with StandardLiftables
-}

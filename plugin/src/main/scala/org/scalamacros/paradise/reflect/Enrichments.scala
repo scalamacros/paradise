@@ -13,7 +13,6 @@ trait Enrichments extends Definitions
                      with ReflectionUtils
                      with Mirrors
                      with Symbols
-                     with TreeGen
                      with Types
                      with ReplIntegration
                      with Names { self =>

@@ -88,6 +88,7 @@ trait Definitions {
         val t = unliftable.newSyntheticTypeParam
         unliftable.setInfoAndEnter(PolyType(List(t), ClassInfoType(List(typeOf[AnyRef]), newScope, unliftable)))
         enterNewMethod(unliftable, "unapply", Nil, _ => TreeType, _ => appliedType(OptionClass, t.tpe), DEFERRED)
+        unliftable
       } else {
         NoSymbol
       }
@@ -108,6 +109,23 @@ trait Definitions {
 
     lazy val QuasiquoteCompatModuleRef = termPath(QuasiquoteCompatModule.fullName)
 
+    lazy val QuasiquoteCompatBuild = getClassIfDefined("scala.quasiquotes.QuasiquoteCompat").info.decl(newTermName("build"))
+
+    def QuasiquoteCompatBuildRef(universe: Tree) = {
+      // NOTE: density of workarounds per line of code is rapidly ramping up!
+      // here we force the compiler into supporting path-dependent extractors
+      // by manually applying the first argument list, i.e. the one that contains the universe,
+      // and then setting the type of the resulting Apply node so that the typechecker doesn't touch it later
+      // if we didn't set the type, then typedApply for the first arglist would get confused and fai
+      val compatModule = QuasiquoteCompatModule.moduleClass
+      val compatApply = compatModule.info.decl(nme.apply)
+      val applyWithoutTargs = gen.mkAttributedRef(compatModule.tpe, compatApply)
+      val targs = List(SingletonTypeTree(universe) setType universe.tpe)
+      val applyWithTargs = TypeApply(applyWithoutTargs, targs) setType appliedType(applyWithoutTargs.tpe, List(universe.tpe))
+      val compatInstance = Apply(applyWithTargs, List(universe)) setType applyWithTargs.tpe.resultType(List(universe.tpe))
+      Select(compatInstance, nme.build)
+    }
+
     class UniverseDependentTypes(universe: Tree) {
       lazy val nameType         = universeMemberType(tpnme.Name)
       lazy val modsType         = universeMemberType(tpnme.Modifiers)
@@ -120,12 +138,7 @@ trait Definitions {
       lazy val iterableTreeType = appliedType(IterableClass, treeType)
       lazy val listTreeType     = appliedType(ListClass, treeType)
       lazy val listListTreeType = appliedType(ListClass, listTreeType)
-
-      def universeMemberType(name: TypeName) = {
-        val tpe = universe.tpe.memberType(getTypeMember(universe.symbol, name))
-        if (tpe.typeSymbol.typeParams.isEmpty) tpe
-        else newExistentialType(tpe.typeSymbol.typeParams, tpe)
-      }
+      def universeMemberType(name: TypeName) = universe.tpe.memberType(getTypeMember(universe.symbol, name))
     }
 
     def isListType(tp: Type)     = tp <:< classExistentialType(ListClass)
