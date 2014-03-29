@@ -9,6 +9,7 @@ object TypecheckedProps extends QuasiquoteProperties("typechecked") with Typeche
   }
 
   property("for/for-yield") = test {
+    // TODO: disabled because of ForAttachment being either missing or not recognized
     // val enums = fq"x <- xs" :: fq"x1 = x + 1" :: fq"if x1 % 2 == 0" :: Nil
     // val body = q"x1"
     // val xs = q"val xs = List(1, 2, 3)"
@@ -21,6 +22,7 @@ object TypecheckedProps extends QuasiquoteProperties("typechecked") with Typeche
   }
 
   property("for .filter instead of .withFilter") = test {
+    // TODO: disabled because of ForAttachment being either missing or not recognized
     // val enums = fq"foo <- new Foo" :: fq"if foo != null" :: Nil
     // val body = q"foo"
     // val q"${_}; for(..$enums1) yield $body1" = typecheck(q"""
