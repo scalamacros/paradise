@@ -92,6 +92,23 @@ trait ClassConstruction { self: QuasiquoteProperties =>
     val args = q"val a: Int; val b: Int"
     assertEqAst(q"class C(implicit ..$args)", "class C(implicit val a: Int, val b: Int)")
   }
+
+  property("SI-8451: inline secondary constructors") = test {
+    assertEqAst(q"class C(x: Int) { def this() = this(0) }", "class C(x: Int) { def this() = this(0) }")
+  }
+
+  property("SI-8451: unquoted secondary constructors") = test {
+    val secondaryCtor = q"def this() = this(0)"
+    assertEqAst(q"class C(x: Int) { $secondaryCtor }", "class C(x: Int) { def this() = this(0) }")
+  }
+
+  property("#40") = test {
+    assertEqAst(q"class C extends D(2)", "class C extends D(2)")
+    val parent = q"${tq"D"}(2)"
+    assertEqAst(q"class C extends $parent", "class C extends D(2)")
+    val parents = List(parent)
+    assertEqAst(q"class C extends ..$parents", "class C extends D(2)")
+  }
 }
 
 trait TraitConstruction { self: QuasiquoteProperties =>

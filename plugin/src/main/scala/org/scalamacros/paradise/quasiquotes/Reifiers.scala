@@ -168,8 +168,6 @@ trait Reifiers { self: Quasiquotes =>
         reifyCompatCall(nme.SyntacticAppliedType, tpt, targs)
       case SyntacticFunction(args, body) =>
         reifyCompatCall(nme.SyntacticFunction, args, body)
-      case SyntacticIdent(name, isBackquoted) =>
-        reifyCompatCall(nme.SyntacticIdent, name, isBackquoted)
       case SyntacticEmptyTypeTree() =>
         reifyCompatCall(nme.SyntacticEmptyTypeTree)
       case SyntacticImport(expr, selectors) =>
@@ -178,7 +176,21 @@ trait Reifiers { self: Quasiquotes =>
         reifyCompatCall(nme.SyntacticPartialFunction, cases)
       case SyntacticMatch(scrutinee, cases) =>
         reifyCompatCall(nme.SyntacticMatch, scrutinee, cases)
-      case Q(tree) if fillListHole.isDefinedAt(tree) =>
+      case SyntacticTermIdent(name, isBackquoted) =>
+        reifyCompatCall(nme.SyntacticTermIdent, name, isBackquoted)
+      case SyntacticTypeIdent(name) =>
+        reifyCompatCall(nme.SyntacticTypeIdent, name)
+      case SyntacticCompoundType(parents, defns) =>
+        reifyCompatCall(nme.SyntacticCompoundType, parents, defns)
+      case SyntacticSingletonType(ref) =>
+        reifyCompatCall(nme.SyntacticSingletonType, ref)
+      case SyntacticTypeProjection(qual, name) =>
+        reifyCompatCall(nme.SyntacticTypeProjection, qual, name)
+      case SyntacticAnnotatedType(tpt, annot) =>
+        reifyCompatCall(nme.SyntacticAnnotatedType, tpt, annot)
+      case SyntacticExistentialType(tpt, where) =>
+        reifyCompatCall(nme.SyntacticExistentialType, tpt, where)
+       case Q(tree) if fillListHole.isDefinedAt(tree) =>
         mirrorCompatCall(nme.SyntacticBlock, fillListHole(tree))
       case Q(other) =>
         reifyTree(other)

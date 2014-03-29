@@ -118,24 +118,20 @@ object TermDeconstructionProps extends QuasiquoteProperties("term deconstruction
   }
 
   property("exhaustive new pattern") = test {
-    // TODO: there's a mysterious bug lurking here
-    // probably caused by different treatment of early defs in 2.10.x and 2.11.0
-    // however at the moment I need to move on, so I'm leaving it as a known issue
-
-    // def matches(line: String) {
-    //   val q"new { ..$early } with $name[..$targs](...$vargss) with ..$mixin { $self => ..$body }" = parse(line)
-    // }
-    // matches("new foo")
-    // matches("new foo { body }")
-    // matches("new foo[t]")
-    // matches("new foo(x)")
-    // matches("new foo[t](x)")
-    // matches("new foo[t](x) { body }")
-    // matches("new foo with bar")
-    // matches("new foo with bar { body }")
-    // matches("new { anonymous }")
-    // matches("new { val early = 1 } with Parent[Int] { body }")
-    // matches("new Foo { selfie => }")
+    def matches(line: String) {
+      val q"new { ..$early } with $name[..$targs](...$vargss) with ..$mixin { $self => ..$body }" = parse(line)
+    }
+    matches("new foo")
+    matches("new foo { body }")
+    matches("new foo[t]")
+    matches("new foo(x)")
+    matches("new foo[t](x)")
+    matches("new foo[t](x) { body }")
+    matches("new foo with bar")
+    matches("new foo with bar { body }")
+    matches("new { anonymous }")
+    matches("new { val early = 1 } with Parent[Int] { body }")
+    matches("new Foo { selfie => }")
   }
 
   property("exhaustive assign pattern") = test {
@@ -228,5 +224,29 @@ object TermDeconstructionProps extends QuasiquoteProperties("term deconstruction
   property("deconstruct partial function") = test {
     val q"{ case ..$cases }" = q"{ case a => b case c => d }"
     val List(cq"a => b", cq"c => d") = cases
+  }
+
+  property("SI-8350 `new C` and `new C()` are equivalent") = test {
+    val q"new C" = q"new C()"
+    val q"new C()" = q"new C"
+  }
+
+  property("SI-8350 new applications extracted only for non-empty ctor calls") = test{
+    val q"new $c1" = q"new C()"
+    assert(c1 ≈ tq"C")
+    val q"new $c2" = q"new C(x)"
+    assert(c2 ≈ q"${tq"C"}(x)")
+  }
+
+  property("SI-8350 original test case") = test {
+    val q"new ..$parents" = q"new Foo with Bar"
+    assert(parents ≈ List(tq"Foo", tq"Bar"))
+  }
+
+  property("SI-8387 new is not an application") = test {
+    val `new` = q"new F(x)"
+    val q"$f(...$argss)" = `new`
+    assert(f ≈ `new`)
+    assert(argss.isEmpty)
   }
 }

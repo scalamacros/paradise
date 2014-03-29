@@ -12,6 +12,7 @@ abstract class TreeGen extends SymbolTableCompat {
   import global._
   import symbolTable._
   import definitions._
+  import build.SyntacticApplied
 
   def rootId(name: Name)             = Select(Ident(nme.ROOTPKG), name)
   def rootScalaDot(name: Name)       = Select(rootId(nme.scala_) setSymbol ScalaPackage, name)
@@ -350,14 +351,12 @@ abstract class TreeGen extends SymbolTableCompat {
     /* Add constructor to template */
 
     // create parameters for <init> as synthetic trees.
-    var vparamss1 = mmap(vparamss) { vd =>
-      val param = atPos(vd.pos.makeTransparent) {
+    var vparamss1 = vparamss.map { _.map { vd =>
+      atPos(vd.pos.focus) {
         val mods = Modifiers(vd.mods.flags & (IMPLICIT | DEFAULTPARAM | BYNAMEPARAM) | PARAM | PARAMACCESSOR)
-        ValDef(mods withAnnotations vd.mods.annotations, vd.name, vd.tpt.duplicate, duplicateAndKeepPositions(vd.rhs))
+        ValDef(mods withAnnotations vd.mods.annotations, vd.name, vd.tpt.duplicate, vd.rhs.duplicate)
       }
-      param
-    }
-
+    } }
     val (edefs, rest) = body span treeInfo.isEarlyDef
     val (evdefs, etdefs) = edefs partition treeInfo.isEarlyValDef
     val gvdefs = evdefs map {
@@ -375,42 +374,37 @@ abstract class TreeGen extends SymbolTableCompat {
     val (parents1, argss) =
       if (constrMods.hasFlag(TRAIT)) (parents, Nil)
       else {
-        val build.SyntacticApplied(parent, argss) = parents.head
+        val SyntacticApplied(parent, argss) = parents.head
         val argss1 = if (argss.isEmpty) List(Nil) else argss
         (parent :: parents.tail, argss1)
       }
 
     val constr = {
-      if (constrMods.isTrait) {
+      if (constrMods.hasFlag(TRAIT)) {
         if (body forall treeInfo.isInterfaceMember) None
         else Some(
           atPos(wrappingPos(superPos, lvdefs)) (
-            DefDef(NoMods, nme.MIXIN_CONSTRUCTOR, Nil, ListOfNil, TypeTree(), Block(lvdefs, Literal(Constant())))))
-      }
-      else {
+            DefDef(NoMods, nme.MIXIN_CONSTRUCTOR, List(), List(Nil), TypeTree(), Block(lvdefs, Literal(Constant(()))))))
+      } else {
         // convert (implicit ... ) to ()(implicit ... ) if its the only parameter section
-        if (vparamss1.isEmpty || !vparamss1.head.isEmpty && vparamss1.head.head.mods.isImplicit)
+        if (vparamss1.isEmpty || !vparamss1.head.isEmpty && vparamss1.head.head.mods.hasFlag(IMPLICIT))
           vparamss1 = List() :: vparamss1
         val superRef: Tree = atPos(superPos)(mkSuperInitCall)
         val superCall = (superRef /: argss) (Apply.apply)
         Some(
-          atPos(wrappingPos(superPos, lvdefs ::: vparamss1.flatten).makeTransparent) (
-            DefDef(constrMods, nme.CONSTRUCTOR, List(), vparamss1, TypeTree(), Block(lvdefs ::: List(superCall), Literal(Constant())))))
+          // TODO: previously this was `wrappingPos(superPos, lvdefs ::: argss.flatten)`
+          // is it going to be a problem that we can no longer include the `argss`?
+          atPos(wrappingPos(superPos, lvdefs)) (
+            DefDef(constrMods, nme.CONSTRUCTOR, List(), vparamss1, TypeTree(), Block(lvdefs ::: List(superCall), Literal(Constant(()))))))
       }
     }
-    constr foreach (ensureNonOverlapping(_, parents1 ::: gvdefs, focus = false))
+    // FIXME: cant't really check this without internal api
+    // constr foreach (ensureNonOverlapping(_, parents1 ::: gvdefs, focus=false))
+
     // Field definitions for the class - remove defaults.
+    val fieldDefs = vparamss.flatten map (vd => copyValDef(vd)(mods = vd.mods &~ DEFAULTPARAM, rhs = EmptyTree))
 
-    val fieldDefs = vparamss.flatten map (vd => {
-      val field = copyValDef(vd)(mods = vd.mods &~ DEFAULTPARAM, rhs = EmptyTree)
-      // Prevent overlapping of `field` end's position with default argument's start position.
-      // This is needed for `Positions.Locator(pos).traverse` to return the correct tree when
-      // the `pos` is a point position with all its values equal to `vd.rhs.pos.start`.
-      if(field.pos.isRange && vd.rhs.pos.isRange) field.pos = field.pos.withEnd(vd.rhs.pos.start - 1)
-      field
-    })
-
-    global.Template(parents1, self, gvdefs ::: fieldDefs ::: constr ++: etdefs ::: rest)
+    Template(parents1, self, gvdefs ::: fieldDefs ::: constr ++: etdefs ::: rest)
   }
 
   def mkParents(ownerMods: Modifiers, parents: List[Tree], parentPos: Position = NoPosition) =
