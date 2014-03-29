@@ -1,6 +1,5 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
 import scala.reflect.runtime.universe._, Flag._
-import scala.quasiquotes.RuntimeLiftables._
 
 object TermConstructionProps extends QuasiquoteProperties("term construction") {
   property("unquote single tree return tree itself") = forAll { (t: Tree) =>
@@ -229,13 +228,13 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
 
   property("SI-7275 c1") = test {
     object O
-    implicit val liftO = Liftable[O.type] { _ => q"foo; bar" }
+    implicit val liftO = new Liftable[O.type] { def apply(value: O.type): Tree = q"foo; bar" }
     assertEqAst(q"f(..$O)", "f(foo, bar)")
   }
 
   property("SI-7275 c2") = test {
     object O
-    implicit val liftO = Liftable[O.type] { _ => q"{ foo; bar }; { baz; bax }" }
+    implicit val liftO = new Liftable[O.type] { def apply(value: O.type): Tree = q"{ foo; bar }; { baz; bax }" }
     assertEqAst(q"f(...$O)", "f(foo, bar)(baz, bax)")
   }
 
