@@ -246,10 +246,15 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       case UnApply(treeInfo.Unapplied(Select(fun, nme.unapply)), pats) =>
         Some((fun, pats :: Nil))
       case treeInfo.Applied(fun, targs, argss) =>
-        val callee =
-          if (fun.isTerm) SyntacticTypeApplied(fun, targs)
-          else SyntacticAppliedType(fun, targs)
-        Some((callee, argss))
+        fun match {
+          case Select(_: New, nme.CONSTRUCTOR) =>
+            Some((tree, Nil))
+          case _ =>
+            val callee =
+              if (fun.isTerm) SyntacticTypeApplied(fun, targs)
+              else SyntacticAppliedType(fun, targs)
+            Some((callee, argss))
+        }
     }
   }
 
@@ -517,7 +522,9 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       gen.mkNew(parents, mkSelfType(selfType), earlyDefs ::: body, NoPosition, NoPosition)
 
     def unapply(tree: Tree): Option[(List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
-      case SyntacticApplied(Select(New(SyntacticAppliedType(ident, targs)), nme.CONSTRUCTOR), argss) =>
+      case treeInfo.Applied(Select(New(SyntacticAppliedType(ident, targs)), nme.CONSTRUCTOR), Nil, List(Nil)) =>
+        Some((Nil, SyntacticAppliedType(ident, targs) :: Nil, emptyValDef, Nil))
+      case treeInfo.Applied(Select(New(SyntacticAppliedType(ident, targs)), nme.CONSTRUCTOR), Nil, argss) =>
         Some((Nil, SyntacticApplied(SyntacticAppliedType(ident, targs), argss) :: Nil, emptyValDef, Nil))
       case SyntacticBlock(SyntacticClassDef(_, tpnme.ANON_CLASS_NAME, Nil, _, ListOfNil, earlyDefs, parents, selfType, body) ::
                           Apply(Select(New(Ident(tpnme.ANON_CLASS_NAME)), nme.CONSTRUCTOR), Nil) :: Nil) =>
@@ -846,10 +853,10 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   // drop potential @scala.unchecked annotation
   protected object MaybeUnchecked {
     def unapply(tree: Tree): Some[Tree] = tree match {
-      case Annotated(SyntacticNew(Nil, Apply(ScalaDot(compattpnme.unchecked), Nil) :: Nil, emptyValDef, Nil), annottee) =>
+      case Annotated(SyntacticNew(Nil, ScalaDot(compattpnme.unchecked) :: Nil, emptyValDef, Nil), annottee) =>
         Some(annottee)
       case Typed(annottee, MaybeTypeTreeOriginal(
-        Annotated(SyntacticNew(Nil, Apply(ScalaDot(compattpnme.unchecked), Nil) :: Nil, emptyValDef, Nil), _))) =>
+        Annotated(SyntacticNew(Nil, ScalaDot(compattpnme.unchecked) :: Nil, emptyValDef, Nil), _))) =>
         Some(annottee)
       case annottee => Some(annottee)
     }
