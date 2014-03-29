@@ -101,6 +101,14 @@ trait ClassConstruction { self: QuasiquoteProperties =>
     val secondaryCtor = q"def this() = this(0)"
     assertEqAst(q"class C(x: Int) { $secondaryCtor }", "class C(x: Int) { def this() = this(0) }")
   }
+
+  property("#40") = test {
+    assertEqAst(q"class C extends D(2)", "class C extends D(2)")
+    val parent = q"${tq"D"}(2)"
+    assertEqAst(q"class C extends $parent", "class C extends D(2)")
+    val parents = List(parent)
+    assertEqAst(q"class C extends ..$parents", "class C extends D(2)")
+  }
 }
 
 trait TraitConstruction { self: QuasiquoteProperties =>
