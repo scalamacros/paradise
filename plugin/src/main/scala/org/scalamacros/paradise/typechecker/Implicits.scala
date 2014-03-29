@@ -9,6 +9,7 @@ trait Implicits extends NscImplicits {
 
   import global._
   import definitions._
+  import paradiseDefinitions._
   import typeDebug.{ ptTree, ptBlock, ptLine }
   import global.typer.{ printTyping, deindentTyping, indentTyping, printInference }
   import scala.tools.nsc.typechecker.ImplicitsStats._
@@ -1199,6 +1200,68 @@ trait Implicits extends NscImplicits {
         // `materializeImplicit` does some preprocessing for `pt`
         // is it only meant for manifests/tags or we need to do the same for `implicitsOfExpectedType`?
         if (result.isFailure) result = searchImplicit(implicitsOfExpectedType, false)
+
+        // NOTE: that's officially the worst piece of code I've ever written
+        if (result.isFailure && (pt.typeSymbol == LiftableClass || pt.typeSymbol == UnliftableClass) && pt.prefix.isInstanceOf[SingleType]) {
+          def log(message: => String) = if (settings.XlogImplicits.value) println(message)
+          log(s"last-ditch attempt to find an implicit of type $pt")
+          def fail() = { result = SearchFailure }
+          def succeed(tree: Tree) = { result = new SearchResult(tree, EmptyTreeTypeSubstituter) }
+          def typecheckApiRef(name: TermName) = {
+            val SingleType(prePre, preSym) = pt.prefix
+            val universeTpe = {
+              if (!prePre.typeSymbol.isExistential) pt.prefix
+              else prePre.typeSymbol.existentialBound match {
+                case TypeBounds(_, hi) =>
+                  hi.memberType(preSym) match {
+                    case NullaryMethodType(restpe) => restpe
+                    case _ => NoType
+                  }
+                case _ => NoType
+              }
+            }
+            if (universeTpe != NoType) {
+              log(s"universeTpe = $universeTpe")
+              val universeRef = gen.mkAttributedQualifier(universeTpe)
+              val apiRef = atPos(pos.focus)(Select(QuasiquoteCompatBuildRef(universeRef), name))
+              val typedApiRef = typed(apiRef, EXPRmode, wildPt)
+              if (context.hasErrors) {
+                log(s"attempt failed because ${context.errBuffer.head.errMsg}")
+                context.condBufferFlush(_.kind != ErrorKinds.Divergent)
+                fail()
+              } else {
+                log(s"succeeded: $typedApiRef")
+                succeed(typedApiRef)
+              }
+            } else {
+              log(s"prefix doesn't make sense: ${pt.prefix}")
+              fail()
+            }
+          }
+          def guessApiName() = {
+            val allImplicits = QuasiquoteCompatBuild.info.finalResultType.members.filter(_.isImplicit).toList
+            val relevantImplicits = allImplicits.filter(_.info.finalResultType.typeSymbol == pt.typeSymbol)
+            def retArgSym(imp: Symbol): Symbol = {
+              var result = imp.info.finalResultType.typeArgs.headOption.getOrElse(NoType).typeSymbol
+              if (result.info.isInstanceOf[TypeBounds]) result.info.asInstanceOf[TypeBounds].hi.typeSymbol
+              else result
+            }
+            val eligibleImplicits = relevantImplicits.filter(imp => {
+              val ptArgSym = pt.typeArgs.head.typeSymbol
+              ptArgSym.isNonBottomSubClass(retArgSym(imp))
+            })
+            log(s"found ${eligibleImplicits.length} eligible implicit${if (eligibleImplicits.length == 1) "" else "s"}: $eligibleImplicits")
+            val rankedImplicits = eligibleImplicits.filter(imp => !eligibleImplicits.exists(other => other != imp && retArgSym(other).isNonBottomSubClass(retArgSym(imp))))
+            log(s"stripped down to ${rankedImplicits.length} ranked implicit${if (rankedImplicits.length == 1) "" else "s"}: $rankedImplicits")
+            rankedImplicits match {
+              case theOne :: Nil => theOne.name
+              case _ => nme.EMPTY
+            }
+          }
+          val name = guessApiName()
+          if (name == nme.EMPTY) fail()
+          else typecheckApiRef(name)
+        }
 
         if (result.isFailure) {
           context.updateBuffer(previousErrs)

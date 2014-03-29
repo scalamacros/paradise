@@ -168,8 +168,6 @@ trait Reifiers { self: Quasiquotes =>
         reifyCompatCall(nme.SyntacticAppliedType, tpt, targs)
       case SyntacticFunction(args, body) =>
         reifyCompatCall(nme.SyntacticFunction, args, body)
-      case SyntacticIdent(name, isBackquoted) =>
-        reifyCompatCall(nme.SyntacticIdent, name, isBackquoted)
       case SyntacticEmptyTypeTree() =>
         reifyCompatCall(nme.SyntacticEmptyTypeTree)
       case SyntacticImport(expr, selectors) =>
@@ -178,7 +176,21 @@ trait Reifiers { self: Quasiquotes =>
         reifyCompatCall(nme.SyntacticPartialFunction, cases)
       case SyntacticMatch(scrutinee, cases) =>
         reifyCompatCall(nme.SyntacticMatch, scrutinee, cases)
-      case Q(tree) if fillListHole.isDefinedAt(tree) =>
+      case SyntacticTermIdent(name, isBackquoted) =>
+        reifyCompatCall(nme.SyntacticTermIdent, name, isBackquoted)
+      case SyntacticTypeIdent(name) =>
+        reifyCompatCall(nme.SyntacticTypeIdent, name)
+      case SyntacticCompoundType(parents, defns) =>
+        reifyCompatCall(nme.SyntacticCompoundType, parents, defns)
+      case SyntacticSingletonType(ref) =>
+        reifyCompatCall(nme.SyntacticSingletonType, ref)
+      case SyntacticTypeProjection(qual, name) =>
+        reifyCompatCall(nme.SyntacticTypeProjection, qual, name)
+      case SyntacticAnnotatedType(tpt, annot) =>
+        reifyCompatCall(nme.SyntacticAnnotatedType, tpt, annot)
+      case SyntacticExistentialType(tpt, where) =>
+        reifyCompatCall(nme.SyntacticExistentialType, tpt, where)
+       case Q(tree) if fillListHole.isDefinedAt(tree) =>
         mirrorCompatCall(nme.SyntacticBlock, fillListHole(tree))
       case Q(other) =>
         reifyTree(other)
@@ -393,23 +405,7 @@ trait Reifiers { self: Quasiquotes =>
     // because we're just a compiler plugin, not a fork of scalac
     // therefore we have to externalize the calls to new methods
     def mirrorCompatCall(name: TermName, args: Tree*): Tree =
-      if (isReifyingExpressions) {
-        val apply = TypeApply(Select(termPath(QuasiquoteCompatModule.fullName), nme.apply), List(SingletonTypeTree(universe)))
-        Apply(Select(Select(Apply(apply, List(universe)), nme.build), name), args.toList)
-      } else {
-        // NOTE: density of workarounds per line of code is rapidly ramping up!
-        // here we force the compiler into supporting path-dependent extractors
-        // by manually applying the first argument list, i.e. the one that contains the universe,
-        // and then setting the type of the resulting Apply node so that the typechecker doesn't touch it later
-        // if we didn't set the type, then typedApply for the first arglist would get confused and fai
-        val compatModule = QuasiquoteCompatModule.moduleClass
-        val compatApply = compatModule.info.decl(nme.apply)
-        val applyWithoutTargs = gen.mkAttributedRef(compatModule.tpe, compatApply)
-        val targs = List(SingletonTypeTree(universe) setType universe.tpe)
-        val applyWithTargs = TypeApply(applyWithoutTargs, targs) setType appliedType(applyWithoutTargs.tpe, List(universe.tpe))
-        val compatInstance = Apply(applyWithTargs, List(universe)) setType applyWithTargs.tpe.resultType(List(universe.tpe))
-        Apply(Select(Select(compatInstance, nme.build), name), args.toList)
-      }
+      Apply(Select(QuasiquoteCompatBuildRef(universe), name), args.toList)
 
     def reifyCompatCall(name: TermName, args: Any*) =
       mirrorCompatCall(name, args map reify: _*)

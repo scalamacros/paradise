@@ -1,6 +1,5 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
 import scala.reflect.runtime.universe._, Flag._
-import scala.quasiquotes.RuntimeLiftables._
 
 object TermConstructionProps extends QuasiquoteProperties("term construction") {
   property("unquote single tree return tree itself") = forAll { (t: Tree) =>
@@ -229,13 +228,13 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
 
   property("SI-7275 c1") = test {
     object O
-    implicit val liftO = Liftable[O.type] { _ => q"foo; bar" }
+    implicit val liftO = new Liftable[O.type] { def apply(value: O.type): Tree = q"foo; bar" }
     assertEqAst(q"f(..$O)", "f(foo, bar)")
   }
 
   property("SI-7275 c2") = test {
     object O
-    implicit val liftO = Liftable[O.type] { _ => q"{ foo; bar }; { baz; bax }" }
+    implicit val liftO = new Liftable[O.type] { def apply(value: O.type): Tree = q"{ foo; bar }; { baz; bax }" }
     assertEqAst(q"f(...$O)", "f(foo, bar)(baz, bax)")
   }
 
@@ -268,8 +267,12 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
   }
 
   property("don't remove user-defined unit") = test {
-    val q"{ ..$stats }" = q"{ def x = 2; () }"
-    assert(stats ≈ List(q"def x = 2", q"()"))
+    // NOTE: here we work around the fact that 2.10.x doesn't have the notion of synthetic units
+    // to that end we always remove units that come after definitions
+    val q"{ ..$stats1 }" = q"{ def x = 2; () }"
+    assert(stats1 ≈ List(q"def x = 2"))
+    val q"{ ..$stats2 }" = q"{ 42; () }"
+    assert(stats2 ≈ List(q"42", q"()"))
   }
 
   property("empty-tree is not a block") = test {

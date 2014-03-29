@@ -1,6 +1,5 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
 import scala.reflect.runtime.universe._, Flag._
-import scala.quasiquotes.RuntimeLiftables._
 
 object LiftableProps extends QuasiquoteProperties("liftable") {
   property("unquote byte") = test {
