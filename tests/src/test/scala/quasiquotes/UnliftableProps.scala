@@ -1,7 +1,5 @@
 import org.scalacheck._, Prop._, Gen._, Arbitrary._
-import scala.quasiquotes._
 import scala.reflect.runtime.universe._, Flag._
-import RuntimeLiftables._
 
 object UnliftableProps extends QuasiquoteProperties("unliftable") {
   property("unlift name") = test {
@@ -77,10 +75,14 @@ object UnliftableProps extends QuasiquoteProperties("unliftable") {
     assert(s.isInstanceOf[scala.Symbol] && s == 'foo)
   }
 
-  implicit def unliftList[T: Unliftable]: Unliftable[List[T]] = Unliftable {
-    case q"scala.collection.immutable.List(..$args)" if args.forall { implicitly[Unliftable[T]].unapply(_).nonEmpty } =>
-      val ut = implicitly[Unliftable[T]]
-      args.flatMap { ut.unapply(_) }
+  implicit def unliftList[T: Unliftable]: Unliftable[List[T]] = new Unliftable[List[T]] {
+    def unapply(value: Tree): Option[List[T]] = value match {
+      case q"scala.collection.immutable.List(..$args)" if args.forall { implicitly[Unliftable[T]].unapply(_).nonEmpty } =>
+        val ut = implicitly[Unliftable[T]]
+        Some(args.flatMap { ut.unapply(_) })
+      case _ =>
+        None
+    }
   }
 
   property("unlift list (1)") = test {
