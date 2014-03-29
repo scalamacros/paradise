@@ -362,8 +362,10 @@ abstract class TreeGen extends SymbolTableCompat {
     val gvdefs = evdefs map {
       case vdef @ ValDef(_, _, tpt, _) =>
         copyValDef(vdef)(
-        // can't use typetree wrapper here, have to resort to plain duplication
-        tpt = atPos(vdef.pos.focus)(tpt.duplicate),
+        // atPos for the new tpt is necessary, since the original tpt might have no position
+        // (when missing type annotation for ValDef for example), so even though setOriginal modifies the
+        // position of TypeTree, it would still be NoPosition. That's what the author meant.
+        tpt = atPos(vdef.pos.focus)(TypeTree() setOriginal tpt setPos tpt.pos.focus),
         rhs = EmptyTree
       )
     }
