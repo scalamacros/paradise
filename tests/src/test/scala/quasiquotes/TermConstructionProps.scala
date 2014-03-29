@@ -267,8 +267,12 @@ object TermConstructionProps extends QuasiquoteProperties("term construction") {
   }
 
   property("don't remove user-defined unit") = test {
-    val q"{ ..$stats }" = q"{ def x = 2; () }"
-    assert(stats ≈ List(q"def x = 2", q"()"))
+    // NOTE: here we work around the fact that 2.10.x doesn't have the notion of synthetic units
+    // to that end we always remove units that come after definitions
+    val q"{ ..$stats1 }" = q"{ def x = 2; () }"
+    assert(stats1 ≈ List(q"def x = 2"))
+    val q"{ ..$stats2 }" = q"{ 42; () }"
+    assert(stats2 ≈ List(q"42", q"()"))
   }
 
   property("empty-tree is not a block") = test {
