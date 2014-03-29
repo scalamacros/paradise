@@ -188,6 +188,27 @@
 //      val q"def this(..$params) = $rhs2" = q"def this(x: Int) = this(0)"
 //    """)
 
+//  property("SI-8420: don't crash on splicing of non-unliftable native type (1)") = fails(
+//    "Can't unquote List[reflect.runtime.universe.Symbol] with .., consider omitting the dots or providing an implicit instance of Liftable[reflect.runtime.universe.Symbol]",
+//    """
+//      val l: List[Symbol] = Nil
+//      q"f(..$l)"
+//    """)
+
+//  property("SI-8420: don't crash on splicing of non-unliftable native type (2)") = fails(
+//    "Can't unquote List[reflect.runtime.universe.FlagSet] with .., consider omitting the dots or providing an implicit instance of Liftable[reflect.runtime.universe.FlagSet]",
+//    """
+//      val l: List[FlagSet] = Nil
+//      q"f(..$l)"
+//    """)
+
+//  property("SI-8420: don't crash on splicing of non-unliftable native type (3)") = fails(
+//    "Can't unquote List[reflect.runtime.universe.Modifiers] with .., consider omitting the dots or providing an implicit instance of Liftable[reflect.runtime.universe.Modifiers]",
+//    """
+//      val l: List[Modifiers] = Nil
+//      q"f(..$l)"
+//    """)
+
 //   // // Make sure a nice error is reported in this case
 //   // { import Flag._; val mods = NoMods; q"lazy $mods val x: Int" }
 // }
