@@ -117,6 +117,13 @@ trait ClassDeconstruction { self: QuasiquoteProperties =>
     assert(imods.asInstanceOf[Modifiers].hasFlag(IMPLICIT))
     assert(jmods.asInstanceOf[Modifiers].hasFlag(IMPLICIT))
   }
+
+  property("#40") = test {
+    val q"class C extends $parent" = q"class C extends D(2)"
+    val q"class C extends ..$parents" = q"class C extends D(2)"
+    assert(parent ≈ parents.head)
+    assert(parent ≈ q"${tq"D"}(2)")
+  }
 }
 
 trait ModsDeconstruction { self: QuasiquoteProperties =>
@@ -229,6 +236,12 @@ trait DefDeconstruction { self: QuasiquoteProperties =>
   property("extract implicit arg list (2)") = test {
     val q"def foo(...$argss)(implicit ..$impl)" = q"def foo(x: Int)"
     assert(impl.isEmpty)
+  }
+
+  property("SI-8451") = test {
+    val q"def this(..$params) = this(..$args)" = q"def this(x: Int) = this(0)"
+    assert(params ≈ List(q"${Modifiers(PARAM)} val x: Int"))
+    assert(args ≈ List(q"0"))
   }
 }
 
