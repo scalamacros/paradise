@@ -492,6 +492,8 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     def apply(stats: List[Tree]): Tree = gen.mkBlock(stats)
 
     def unapply(tree: Tree): Option[List[Tree]] = tree match {
+      // NOTE: this clause is here just because vanilla 2.10.x parser doesn't support SyntheticUnit
+      case bl @ global.Block(stats @ (_ :+ (_: DefTree)), Literal(Constant(()))) => Some(treeInfo.untypecheckedBlockBody(bl))
       case bl @ global.Block(stats, SyntheticUnit()) => Some(treeInfo.untypecheckedBlockBody(bl))
       case bl @ global.Block(stats, expr)            => Some(treeInfo.untypecheckedBlockBody(bl) :+ expr)
       case SyntheticUnit()                         => Some(Nil)
