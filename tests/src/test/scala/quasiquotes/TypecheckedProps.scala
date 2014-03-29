@@ -132,6 +132,16 @@ object TypecheckedProps extends QuasiquoteProperties("typechecked") with Typeche
     assert(name == defName)
     assert(rhs ≈ defRhs)
   }
+
+  property("partial function at runtime") = test {
+    val q"{ case ..$cases }: $ascr" = typecheck(q"{ case 1 => () }: PartialFunction[Int, Unit]")
+    assert(cases ≈ q"{ case 1 => () }".cases)
+  }
+
+  property("partial function at compile-time") = test {
+    val pf = t8411.defaultZeroCase { case 1 => 2 }
+    assert(pf(2) == 0)
+  }
 }
 
 trait TypecheckedTypes { self: QuasiquoteProperties =>

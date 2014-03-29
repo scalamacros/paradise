@@ -310,7 +310,7 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
     val SyntacticPartialFunction: SyntacticPartialFunctionExtractor
     trait SyntacticPartialFunctionExtractor {
       def apply(cases: List[U#Tree]): U#Match
-      def unapply(tree: U#Match): Option[List[U#CaseDef]]
+      def unapply(tree: U#Tree): Option[List[U#CaseDef]]
     }
 
     val SyntacticMatch: SyntacticMatchExtractor
@@ -625,7 +625,7 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
     }
     val SyntacticPartialFunction: SyntacticPartialFunctionExtractor = new SyntacticPartialFunctionExtractor {
       def apply(cases: List[U#Tree]): Match = _build.SyntacticPartialFunction.apply(cases.asInstanceOf[List[_u.Tree]]).asInstanceOf[Match]
-      def unapply(tree: U#Match): Option[List[CaseDef]] = _build.SyntacticPartialFunction.unapply(tree.asInstanceOf[_u.Match]).asInstanceOf[Option[List[CaseDef]]]
+      def unapply(tree: U#Tree): Option[List[CaseDef]] = _build.SyntacticPartialFunction.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[List[CaseDef]]]
     }
     val SyntacticPatDef: SyntacticPatDefExtractor = new SyntacticPatDefExtractor {
       def apply(mods: U#Modifiers, pat: U#Tree, tpt: U#Tree, rhs: U#Tree): List[U#ValDef] = _build.SyntacticPatDef.apply(mods.asInstanceOf[_u.Modifiers], pat.asInstanceOf[_u.Tree], tpt.asInstanceOf[_u.Tree], rhs.asInstanceOf[_u.Tree]).asInstanceOf[List[U#ValDef]]
