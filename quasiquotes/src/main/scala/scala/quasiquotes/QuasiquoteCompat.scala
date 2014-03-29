@@ -325,10 +325,16 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
       def unapply(tree: U#Try): Option[(U#Tree, List[U#CaseDef], U#Tree)]
     }
 
-    val SyntacticIdent: SyntacticIdentExtractor
-    trait SyntacticIdentExtractor {
-      def apply(name: U#Name, isBackquoted: Boolean = false): U#Ident
-      def unapply(tree: U#Ident): Option[(U#Name, Boolean)]
+    val SyntacticTermIdent: SyntacticTermIdentExtractor
+    trait SyntacticTermIdentExtractor {
+      def apply(name: U#TermName, isBackquoted: Boolean = false): U#Ident
+      def unapply(id: U#Ident): Option[(U#TermName, Boolean)]
+    }
+
+    val SyntacticTypeIdent: SyntacticTypeIdentExtractor
+    trait SyntacticTypeIdentExtractor {
+      def apply(name: U#TypeName): U#Ident
+      def unapply(tree: U#Tree): Option[U#TypeName]
     }
 
     val SyntacticImport: SyntacticImportExtractor
@@ -347,6 +353,36 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
     trait SyntacticSelectTermExtractor {
       def apply(qual: U#Tree, name: U#TermName): U#Select
       def unapply(tree: U#Tree): Option[(U#Tree, U#TermName)]
+    }
+
+    val SyntacticCompoundType: SyntacticCompoundTypeExtractor
+    trait SyntacticCompoundTypeExtractor {
+      def apply(parents: List[U#Tree], defns: List[U#Tree]): U#CompoundTypeTree
+      def unapply(tree: U#Tree): Option[(List[U#Tree], List[U#Tree])]
+    }
+
+    val SyntacticSingletonType: SyntacticSingletonTypeExtractor
+    trait SyntacticSingletonTypeExtractor {
+      def apply(tree: U#Tree): U#SingletonTypeTree
+      def unapply(tree: U#Tree): Option[U#Tree]
+    }
+
+    val SyntacticTypeProjection: SyntacticTypeProjectionExtractor
+    trait SyntacticTypeProjectionExtractor {
+      def apply(qual: U#Tree, name: U#TypeName): U#SelectFromTypeTree
+      def unapply(tree: U#Tree): Option[(U#Tree, U#TypeName)]
+    }
+
+    val SyntacticAnnotatedType: SyntacticAnnotatedTypeExtractor
+    trait SyntacticAnnotatedTypeExtractor {
+      def apply(tpt: U#Tree, annot: U#Tree): U#Annotated
+      def unapply(tree: U#Tree): Option[(U#Tree, U#Tree)]
+    }
+
+    val SyntacticExistentialType: SyntacticExistentialTypeExtractor
+    trait SyntacticExistentialTypeExtractor {
+      def apply(tpt: U#Tree, where: List[U#Tree]): U#ExistentialTypeTree
+      def unapply(tree: U#Tree): Option[(U#Tree, List[U#MemberDef])]
     }
   }
 
@@ -494,6 +530,10 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
     }
     def SingleType(pre: U#Type,sym: U#Symbol): U#Type = _build.SingleType(pre.asInstanceOf[_u.Type], sym.asInstanceOf[_u.Symbol]).asInstanceOf[SingleType]
     def SuperType(thistpe: U#Type,supertpe: U#Type): U#Type = _build.SuperType(thistpe.asInstanceOf[_u.Type], supertpe.asInstanceOf[_u.Type]).asInstanceOf[SuperType]
+    val SyntacticAnnotatedType: SyntacticAnnotatedTypeExtractor = new SyntacticAnnotatedTypeExtractor {
+      def apply(tpt: U#Tree, annot: U#Tree): U#Annotated = _build.SyntacticAnnotatedType.apply(tpt.asInstanceOf[_u.Tree], annot.asInstanceOf[_u.Tree]).asInstanceOf[U#Annotated]
+      def unapply(tree: U#Tree): Option[(U#Tree, U#Tree)] = _build.SyntacticAnnotatedType.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(U#Tree, U#Tree)]]
+    }
     val SyntacticApplied: SyntacticAppliedExtractor = new SyntacticAppliedExtractor {
       def apply(tree: U#Tree, argss: List[List[U#Tree]]): U#Tree = _build.SyntacticApplied.apply(tree.asInstanceOf[_u.Tree], argss.asInstanceOf[List[List[_u.Tree]]]).asInstanceOf[U#Tree]
       def unapply(tree: U#Tree): Some[(U#Tree, List[List[U#Tree]])] = _build.SyntacticApplied.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Some[(U#Tree, List[List[U#Tree]])]]
@@ -520,6 +560,10 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
       def unapply(tree: U#Tree): Option[(U#Modifiers, U#TypeName, List[U#TypeDef], U#Modifiers, List[List[U#ValDef]],
                                        List[U#Tree], List[U#Tree], U#ValDef, List[U#Tree])] = _build.SyntacticClassDef.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(U#Modifiers, U#TypeName, List[U#TypeDef], U#Modifiers, List[List[U#ValDef]], List[U#Tree], List[U#Tree], U#ValDef, List[U#Tree])]]
     }
+    val SyntacticCompoundType: SyntacticCompoundTypeExtractor = new SyntacticCompoundTypeExtractor {
+      def apply(parents: List[U#Tree], defns: List[U#Tree]): U#CompoundTypeTree = _build.SyntacticCompoundType.apply(parents.asInstanceOf[List[_u.Tree]], defns.asInstanceOf[List[_u.Tree]]).asInstanceOf[U#CompoundTypeTree]
+      def unapply(tree: U#Tree): Option[(List[U#Tree], List[U#Tree])] = _build.SyntacticCompoundType.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(List[U#Tree], List[U#Tree])]]
+    }
     val SyntacticDefDef: SyntacticDefDefExtractor = new SyntacticDefDefExtractor {
       def apply(mods: U#Modifiers, name: U#TermName, tparams: List[U#Tree],
                 vparamss: List[List[U#Tree]], tpt: U#Tree, rhs: U#Tree): DefDef = _build.SyntacticDefDef.apply(mods.asInstanceOf[_u.Modifiers], name.asInstanceOf[_u.TermName], tparams.asInstanceOf[List[_u.Tree]], vparamss.asInstanceOf[List[List[_u.Tree]]], tpt.asInstanceOf[_u.Tree], rhs.asInstanceOf[_u.Tree]).asInstanceOf[DefDef]
@@ -528,6 +572,10 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
     val SyntacticEmptyTypeTree: SyntacticEmptyTypeTreeExtractor = new SyntacticEmptyTypeTreeExtractor {
       def apply(): TypeTree = _build.SyntacticEmptyTypeTree().asInstanceOf[TypeTree]
       def unapply(tt: U#TypeTree): Boolean = _build.SyntacticEmptyTypeTree.unapply(tt.asInstanceOf[_u.TypeTree])
+    }
+    val SyntacticExistentialType: SyntacticExistentialTypeExtractor = new SyntacticExistentialTypeExtractor {
+      def apply(tpt: U#Tree, where: List[U#Tree]): U#ExistentialTypeTree = _build.SyntacticExistentialType.apply(tpt.asInstanceOf[_u.Tree], where.asInstanceOf[List[_u.Tree]]).asInstanceOf[U#ExistentialTypeTree]
+      def unapply(tree: U#Tree): Option[(U#Tree, List[U#MemberDef])] = _build.SyntacticExistentialType.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(U#Tree, List[U#MemberDef])]]
     }
     val SyntacticFilter: SyntacticFilterExtractor = new SyntacticFilterExtractor {
       def apply(test: U#Tree): U#Tree = _build.SyntacticFilter.apply(test.asInstanceOf[_u.Tree]).asInstanceOf[U#Tree]
@@ -548,10 +596,6 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
     val SyntacticFunctionType: SyntacticFunctionTypeExtractor = new SyntacticFunctionTypeExtractor {
       def apply(argtpes: List[U#Tree], restpe: U#Tree): U#Tree = _build.SyntacticFunctionType.apply(argtpes.asInstanceOf[List[_u.Tree]], restpe.asInstanceOf[_u.Tree]).asInstanceOf[U#Tree]
       def unapply(tree: U#Tree): Option[(List[U#Tree], U#Tree)] = _build.SyntacticFunctionType.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(List[U#Tree], U#Tree)]]
-    }
-    val SyntacticIdent: SyntacticIdentExtractor = new SyntacticIdentExtractor {
-      def apply(name: U#Name, isBackquoted: Boolean = false): Ident = _build.SyntacticIdent.apply(name.asInstanceOf[_u.Name], isBackquoted).asInstanceOf[Ident]
-      def unapply(tree: U#Ident): Option[(U#Name, Boolean)] = _build.SyntacticIdent.unapply(tree.asInstanceOf[_u.Ident]).asInstanceOf[Option[(U#Name, Boolean)]]
     }
     val SyntacticImport: SyntacticImportExtractor = new SyntacticImportExtractor {
       def apply(expr: U#Tree, selectors: List[U#Tree]): Import = _build.SyntacticImport.apply(expr.asInstanceOf[_u.Tree], selectors.asInstanceOf[List[_u.Tree]]).asInstanceOf[Import]
@@ -594,6 +638,22 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
       def apply(qual: U#Tree, name: U#TypeName): Select = _build.SyntacticSelectType.apply(qual.asInstanceOf[_u.Tree], name.asInstanceOf[_u.TypeName]).asInstanceOf[Select]
       def unapply(tree: U#Tree): Option[(U#Tree, U#TypeName)] = _build.SyntacticSelectType.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(U#Tree, U#TypeName)]]
     }
+    val SyntacticSingletonType: SyntacticSingletonTypeExtractor = new SyntacticSingletonTypeExtractor {
+      def apply(tree: U#Tree): U#SingletonTypeTree = _build.SyntacticSingletonType.apply(tree.asInstanceOf[_u.Tree]).asInstanceOf[U#SingletonTypeTree]
+      def unapply(tree: U#Tree): Option[U#Tree] = _build.SyntacticSingletonType.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[U#Tree]]
+    }
+    val SyntacticTermIdent: SyntacticTermIdentExtractor = new SyntacticTermIdentExtractor {
+      def apply(name: U#TermName, isBackquoted: Boolean = false): U#Ident =
+        _build.SyntacticTermIdent.apply(name.asInstanceOf[_u.TermName], isBackquoted).asInstanceOf[U#Ident]
+      def unapply(id: U#Ident): Option[(U#TermName, Boolean)] =
+        _build.SyntacticTermIdent.unapply(id.asInstanceOf[_u.Ident]).asInstanceOf[Option[(U#TermName, Boolean)]]
+    }
+    val SyntacticTypeIdent: SyntacticTypeIdentExtractor = new SyntacticTypeIdentExtractor {
+      def apply(name: U#TypeName): U#Ident =
+        _build.SyntacticTypeIdent.apply(name.asInstanceOf[_u.TypeName]).asInstanceOf[U#Ident]
+      def unapply(tree: U#Tree): Option[(U#TypeName)] =
+        _build.SyntacticTypeIdent.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(U#TypeName)]]
+    }
     val SyntacticTraitDef: SyntacticTraitDefExtractor = new SyntacticTraitDefExtractor {
       def apply(mods: U#Modifiers, name: U#TypeName, tparams: List[U#Tree],
                 earlyDefs: List[U#Tree], parents: List[U#Tree], selfType: U#Tree, body: List[U#Tree]): U#ClassDef =
@@ -619,6 +679,10 @@ trait QuasiquoteCompat[U <: Universe with Singleton] {
     val SyntacticTypeApplied: SyntacticTypeAppliedExtractor = new SyntacticTypeAppliedExtractor {
       def apply(tree: U#Tree, targs: List[U#Tree]): U#Tree = _build.SyntacticTypeApplied.apply(tree.asInstanceOf[_u.Tree], targs.asInstanceOf[List[_u.Tree]]).asInstanceOf[U#Tree]
       def unapply(tree: U#Tree): Option[(U#Tree, List[U#Tree])] = _build.SyntacticTypeApplied.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(U#Tree, List[U#Tree])]]
+    }
+    val SyntacticTypeProjection: SyntacticTypeProjectionExtractor = new SyntacticTypeProjectionExtractor {
+      def apply(qual: U#Tree, name: U#TypeName): U#SelectFromTypeTree = _build.SyntacticTypeProjection(qual.asInstanceOf[_u.Tree], name.asInstanceOf[_u.TypeName]).asInstanceOf[U#SelectFromTypeTree]
+      def unapply(tree: U#Tree): Option[(U#Tree, U#TypeName)] = _build.SyntacticTypeProjection.unapply(tree.asInstanceOf[_u.Tree]).asInstanceOf[Option[(U#Tree, U#TypeName)]]
     }
     val SyntacticValDef: SyntacticValDefExtractor = new SyntacticValDefExtractor {
       def apply(mods: U#Modifiers, name: U#TermName, tpt: U#Tree, rhs: U#Tree): U#ValDef = _build.SyntacticValDef(mods.asInstanceOf[_u.Modifiers], name.asInstanceOf[_u.TermName], tpt.asInstanceOf[_u.Tree], rhs.asInstanceOf[_u.Tree]).asInstanceOf[U#ValDef]
