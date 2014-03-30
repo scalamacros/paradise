@@ -98,7 +98,8 @@ object build extends Build {
     base = file("root")
   ) settings (
     test in Test := (test in tests in Test).value,
-    publish := {}
+    publish := {},
+    publishSigned := {}
   ) aggregate (quasiquotes, plugin)
 
   lazy val quasiquotes = Project(
@@ -109,7 +110,7 @@ object build extends Build {
   ) settings (
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0-M5" cross CrossVersion.full),
-    javacOptions ++= Seq("-target", "1.6")
+    javacOptions ++= Seq("-target", "1.6", "-source", "1.6")
   )
 
   lazy val plugin = Project(
