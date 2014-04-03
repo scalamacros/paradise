@@ -7,7 +7,7 @@ import scala.reflect.internal.SymbolTable
 abstract class ReificationSupport extends SymbolTableCompat { self =>
   val global: SymbolTable
 
-  import global._
+  import global.{definitions => _, nme => _, tpnme => _, lowerTermNames => _, copyValDef => _, deriveTemplate => _, _}
   import symbolTable._
   import definitions._
 
@@ -21,7 +21,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   }
 
   protected def select(owner: Symbol, name: Name): Symbol = {
-    val result = owner.info decl name
+    val result = owner.info declaration name
     if (result ne NoSymbol) result
     else {
       val mirror = mirrorThatLoaded(owner)
@@ -34,7 +34,12 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   }
 
   def selectOverloadedMethod(owner: Symbol, name: String, index: Int): MethodSymbol = {
-    val result = owner.info.decl(newTermName(name)).alternatives(index)
+    val sym = owner.info.declaration(newTermName(name))
+    val alternatives = sym match {
+      case sym if sym.isTerm => (sym.asTerm: scala.reflect.api.Symbols#TermSymbol).alternatives.asInstanceOf[List[Symbol]]
+      case _ => List(sym)
+    }
+    val result = alternatives(index)
     if (result ne NoSymbol) result.asMethod
     else throw new ScalaReflectionException("overloaded method %s #%d in %s not found".format(name, index, owner.fullName))
   }
@@ -52,10 +57,10 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     global.newScopeWith(elems: _*)
 
   def setAnnotations[S <: Symbol](sym: S, annots: List[AnnotationInfo]): S =
-    sym.setAnnotations(annots)
+    sym.my_setAnnotations(annots).asInstanceOf[S]
 
   def setInfo[S <: Symbol](sym: S, tpe: Type): S =
-    sym.setInfo(tpe)
+    sym.my_setInfo(tpe).asInstanceOf[S]
 
   def mkThis(sym: Symbol): Tree = global.This(sym)
 
@@ -93,7 +98,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
 
   def BoundedWildcardType(bounds: TypeBounds): BoundedWildcardType = global.BoundedWildcardType(bounds)
 
-  def thisPrefix(sym: Symbol): Type = sym.thisPrefix
+  def thisPrefix(sym: Symbol): Type = sym.my_thisPrefix
 
   def setType[T <: Tree](tree: T, tpe: Type): T = { tree.setType(tpe); tree }
 
@@ -122,9 +127,9 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     case Typed(Ident(name: TermName), tpt) =>
       mkParam(ValDef(NoMods, name, tpt, EmptyTree), extraFlags, excludeFlags)
     case vd: ValDef =>
-      var newmods = vd.mods & (~excludeFlags)
-      if (vd.rhs.nonEmpty) newmods |= DEFAULTPARAM
-      copyValDef(vd)(mods = newmods | extraFlags)
+      var newmods = vd.mods my_& (~excludeFlags)
+      if (vd.rhs.nonEmpty) newmods = newmods my_| DEFAULTPARAM
+      copyValDef(vd)(mods = newmods my_| extraFlags)
     case _ =>
       throw new IllegalArgumentException(s"$tree is not valid represenation of a parameter, " +
                                           """consider reformatting it into q"val $name: $T = $default" shape""")
@@ -136,7 +141,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
 
   def mkTparams(tparams: List[Tree]): List[TypeDef] =
     tparams.map {
-      case td: TypeDef => copyTypeDef(td)(mods = (td.mods | PARAM) & (~DEFERRED))
+      case td: TypeDef => copyTypeDef(td)(mods = (td.mods my_| PARAM) my_& (~DEFERRED))
       case other => throw new IllegalArgumentException(s"can't splice $other as type parameter")
     }
 
@@ -173,10 +178,10 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   }
 
   def mkEarlyDef(defn: Tree): Tree = defn match {
-    case vdef @ ValDef(mods, _, _, _) if !mods.isDeferred =>
-      copyValDef(vdef)(mods = mods | PRESUPER)
+    case vdef @ ValDef(mods, _, _, _) if !mods.my_isDeferred =>
+      copyValDef(vdef)(mods = mods my_| PRESUPER)
     case tdef @ TypeDef(mods, _, _, _) =>
-      copyTypeDef(tdef)(mods = mods | PRESUPER)
+      copyTypeDef(tdef)(mods = mods my_| PRESUPER)
     case _ =>
       throw new IllegalArgumentException(s"not legal early def: $defn")
   }
@@ -196,7 +201,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       if (implparams.nonEmpty) paramss :+ mkImplicitParam(implparams) else paramss
 
     def unapply(vparamss: List[List[ValDef]]): Some[(List[List[ValDef]], List[ValDef])] = vparamss match {
-      case init :+ (last @ (initlast :: _)) if initlast.mods.isImplicit => Some((init, last))
+      case init :+ (last @ (initlast :: _)) if initlast.mods.my_isImplicit => Some((init, last))
       case _ => Some((vparamss, Nil))
     }
   }
@@ -264,7 +269,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       // NOTE: should be SyntacticBlock(lvdefs :+ _), but have to work around because of emulation that we have to do for SyntacticBlock
       // read more about the workaround in comments for SyntacticBlock
       case DefDef(mods, nme.MIXIN_CONSTRUCTOR, _, _, _, SyntacticBlock(lvdefs)) =>
-        Some((mods | Flag.TRAIT, Nil, Nil, lvdefs))
+        Some((mods my_| Flag.TRAIT, Nil, Nil, lvdefs))
       case DefDef(mods, nme.CONSTRUCTOR, Nil, vparamss, _, SyntacticBlock(lvdefs :+ SyntacticApplied(_, argss) :+ _)) =>
         Some((mods, vparamss, argss, lvdefs))
       case _ => None
@@ -283,7 +288,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
         trees.indexWhere { case UnCtor(_, _, _, _) => true ; case _ => false }
 
       if (tbody forall treeInfo.isInterfaceMember)
-        result(NoMods | Flag.TRAIT, Nil, Nil, parents0, tbody)
+        result(NoMods my_| Flag.TRAIT, Nil, Nil, parents0, tbody)
       else if (indexOfCtor(tbody) == -1)
         None
       else {
@@ -304,7 +309,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
             copyValDef(gvdef)(tpt = tpt, rhs = rhs)
         }
         val edefs = evdefs ::: etdefs
-        if (ctorMods.isTrait)
+        if (ctorMods.my_isTrait)
           result(ctorMods, Nil, edefs, parents, body)
         else {
           // undo conversion from (implicit ... ) to ()(implicit ... ) when its the only parameter section
@@ -317,8 +322,8 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
           def ctorArgsCorrespondToFields = vparamssRestoredImplicits.flatten.forall { vd => modsMap.contains(vd.name) }
           if (!ctorArgsCorrespondToFields) None
           else {
-            val vparamss = mmap(vparamssRestoredImplicits) { vd =>
-              val originalMods = modsMap(vd.name) | (vd.mods.flags & DEFAULTPARAM)
+            val vparamss = scala.quasiquotes.Collections.mmap(vparamssRestoredImplicits) { vd =>
+              val originalMods = modsMap(vd.name) my_| (vd.mods.flags & DEFAULTPARAM)
               atPos(vd.pos)(ValDef(originalMods, vd.name, vd.tpt, vd.rhs))
             }
             result(ctorMods, vparamss, edefs, parents, body)
@@ -331,7 +336,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   protected def mkSelfType(tree: Tree) = tree match {
     case vd: ValDef =>
       require(vd.rhs.isEmpty, "self types must have empty right hand side")
-      copyValDef(vd)(mods = (vd.mods | PRIVATE) & (~DEFERRED))
+      copyValDef(vd)(mods = (vd.mods my_| PRIVATE) my_& (~DEFERRED))
     case _ =>
       throw new IllegalArgumentException(s"$tree is not a valid representation of self type, " +
                                          """consider reformatting into q"val $self: $T" shape""")
@@ -341,11 +346,11 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     def apply(mods: Modifiers, name: TypeName, tparams: List[Tree],
               constrMods: Modifiers, vparamss: List[List[Tree]],
               earlyDefs: List[Tree], parents: List[Tree], selfType: Tree, body: List[Tree]): ClassDef = {
-      val extraFlags = PARAMACCESSOR | (if (mods.isCase) CASEACCESSOR else 0L)
+      val extraFlags = PARAMACCESSOR | (if (mods.my_isCase) CASEACCESSOR else 0L)
       val vparamss0 = mkParam(vparamss, extraFlags, excludeFlags = DEFERRED | PARAM)
       val tparams0 = mkTparams(tparams)
       val parents0 = gen.mkParents(mods,
-        if (mods.isCase) parents.filter {
+        if (mods.my_isCase) parents.filter {
           case ScalaDot(tpnme.Product | tpnme.Serializable | tpnme.AnyRef) => false
           case _ => true
         } else parents
@@ -359,7 +364,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     def unapply(tree: Tree): Option[(Modifiers, TypeName, List[TypeDef], Modifiers, List[List[ValDef]],
                                      List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
       case ClassDef(mods, name, tparams, UnMkTemplate(parents, selfType, ctorMods, vparamss, earlyDefs, body))
-        if !ctorMods.isTrait && !ctorMods.hasFlag(JAVA) =>
+        if !ctorMods.my_isTrait && !ctorMods.hasFlag(JAVA) =>
         Some((mods, name, tparams, ctorMods, vparamss, earlyDefs, parents, selfType, body))
       case _ =>
         None
@@ -369,7 +374,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   object SyntacticTraitDef {
     def apply(mods: Modifiers, name: TypeName, tparams: List[Tree], earlyDefs: List[Tree],
               parents: List[Tree], selfType: Tree, body: List[Tree]): ClassDef = {
-      val mods0 = mods | TRAIT | ABSTRACT
+      val mods0 = mods my_| TRAIT my_| ABSTRACT
       val templ = gen.mkTemplate(parents, mkSelfType(selfType), Modifiers(TRAIT), Nil, earlyDefs ::: body)
       gen.mkClassDef(mods0, name, mkTparams(tparams), templ)
     }
@@ -377,7 +382,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     def unapply(tree: Tree): Option[(Modifiers, TypeName, List[TypeDef],
                                      List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
       case ClassDef(mods, name, tparams, UnMkTemplate(parents, selfType, ctorMods, vparamss, earlyDefs, body))
-        if mods.isTrait =>
+        if mods.my_isTrait =>
         Some((mods, name, tparams, earlyDefs, parents, selfType, body))
       case _ => None
     }
@@ -568,13 +573,13 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       case DefDef(mods, nme.CONSTRUCTOR, tparams, vparamss, tpt, Block(List(expr), Literal(Constant(())))) =>
         Some((mods, nme.CONSTRUCTOR, tparams, vparamss, tpt, expr))
       case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-        Some((mods, name, tparams, vparamss, tpt, rhs))
+        Some((mods, name.toTermName, tparams, vparamss, tpt, rhs))
       case _ => None
     }
   }
 
   protected class SyntacticValDefBase(isMutable: Boolean) {
-    def modifiers(mods: Modifiers): Modifiers = if (isMutable) mods | MUTABLE else mods
+    def modifiers(mods: Modifiers): Modifiers = if (isMutable) mods my_| MUTABLE else mods
 
     def apply(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree): ValDef = ValDef(modifiers(mods), name, tpt, rhs)
 
@@ -696,7 +701,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       case _                        => gen.mkPatDef(mods, Typed(pat, tpt), rhs)
     }
     def unapply(tree: Tree): Option[(Modifiers, Tree, Tree, Tree)] = tree match {
-      case ValDef(mods, compatnme.QUASIQUOTE_PAT_DEF, Typed(pat,  tpt), rhs) => Some((mods, pat, tpt, rhs))
+      case ValDef(mods, nme.QUASIQUOTE_PAT_DEF, Typed(pat,  tpt), rhs) => Some((mods, pat, tpt, rhs))
       case _ => None
     }
   }
@@ -731,8 +736,9 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
 
   // undo gen.mkFor:makeClosure
   protected object UnClosure {
+    private val PARAM = 1 << 13
     def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
-      case Function(ValDef(Modifiers(PARAM, _, _), name, tpt, EmptyTree) :: Nil, body) =>
+      case Function(ValDef(Modifiers(FlagsRepr(PARAM), _, _), name, tpt, EmptyTree) :: Nil, body) =>
         tpt match {
           case SyntacticEmptyTypeTree() => Some((Bind(name, global.Ident(nme.WILDCARD)), body))
           case _                        => Some((Bind(name, Typed(global.Ident(nme.WILDCARD), tpt)), body))
@@ -868,10 +874,10 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   // drop potential @scala.unchecked annotation
   protected object MaybeUnchecked {
     def unapply(tree: Tree): Some[Tree] = tree match {
-      case Annotated(SyntacticNew(Nil, ScalaDot(compattpnme.unchecked) :: Nil, emptyValDef, Nil), annottee) =>
+      case Annotated(SyntacticNew(Nil, ScalaDot(tpnme.unchecked) :: Nil, emptyValDef, Nil), annottee) =>
         Some(annottee)
       case Typed(annottee, MaybeTypeTreeOriginal(
-        Annotated(SyntacticNew(Nil, ScalaDot(compattpnme.unchecked) :: Nil, emptyValDef, Nil), _))) =>
+        Annotated(SyntacticNew(Nil, ScalaDot(tpnme.unchecked) :: Nil, emptyValDef, Nil), _))) =>
         Some(annottee)
       case annottee => Some(annottee)
     }
@@ -934,7 +940,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   object SyntacticTermIdent {
     def apply(name: TermName, isBackquoted: Boolean): Ident = {
       val id = Ident(name)
-      if (isBackquoted) id updateAttachment BackquotedIdentifierAttachment
+      if (isBackquoted) id my_updateAttachment BackquotedIdentifierAttachment
       id
     }
     def unapply(id: Ident): Option[(TermName, Boolean)] = id.name match {
@@ -1031,7 +1037,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       def apply(left: Tree, right: Tree): Apply =
         Apply(global.Ident(nme.MINGT), left :: right :: Nil)
       def unapply(tree: Apply): Option[(Tree, Tree)] = tree match {
-        case Apply(global.Ident(compatnme.MINGT), left :: right :: Nil) => Some((left, right))
+        case Apply(global.Ident(nme.MINGT), left :: right :: Nil) => Some((left, right))
         case _ => None
       }
     }
