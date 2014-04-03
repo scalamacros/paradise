@@ -543,9 +543,9 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
 
     def unapply(tree: Tree): Option[(List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
       case treeInfo.Applied(Select(New(SyntacticAppliedType(ident, targs)), nme.CONSTRUCTOR), Nil, List(Nil)) =>
-        Some((Nil, SyntacticAppliedType(ident, targs) :: Nil, emptyValDef, Nil))
+        Some((Nil, SyntacticAppliedType(ident, targs) :: Nil, global.asInstanceOf[scala.reflect.api.Universe].emptyValDef.asInstanceOf[global.ValDef], Nil))
       case treeInfo.Applied(Select(New(SyntacticAppliedType(ident, targs)), nme.CONSTRUCTOR), Nil, argss) =>
-        Some((Nil, SyntacticApplied(SyntacticAppliedType(ident, targs), argss) :: Nil, emptyValDef, Nil))
+        Some((Nil, SyntacticApplied(SyntacticAppliedType(ident, targs), argss) :: Nil, global.asInstanceOf[scala.reflect.api.Universe].emptyValDef.asInstanceOf[global.ValDef], Nil))
       case SyntacticBlock(SyntacticClassDef(_, tpnme.ANON_CLASS_NAME, Nil, _, ListOfNil, earlyDefs, parents, selfType, body) ::
                           Apply(Select(New(Ident(tpnme.ANON_CLASS_NAME)), nme.CONSTRUCTOR), Nil) :: Nil) =>
         Some((earlyDefs, parents, selfType, body))

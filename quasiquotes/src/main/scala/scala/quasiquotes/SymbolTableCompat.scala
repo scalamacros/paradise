@@ -104,7 +104,7 @@ trait SymbolTableCompat { self =>
       }
     }
 
-    implicit class RichMirror(rb: RootsBase) {
+    implicit class RichMirror(rb: scala.reflect.api.Mirror[_]) {
       final def getPackageObjectWithMember(pre: Type, sym: Symbol): Symbol = {
         // The owner of a symbol which requires package qualification may be the
         // package object iself, but it also could be any superclass of the package
@@ -316,8 +316,8 @@ trait SymbolTableCompat { self =>
     lazy val MaxFunctionArity = 22
     lazy val MaxTupleArity = 22
     lazy val NilModule = global.definitions.NilModule
-    lazy val NothingClass = global.definitions.NothingClass
-    lazy val NothingTpe = global.definitions.NothingTpe
+    lazy val NothingClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).NothingClass.asInstanceOf[Symbol]
+    lazy val NothingTpe = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).NothingTpe.asInstanceOf[Type]
     lazy val Object_asInstanceOf = typeOf[Object].member(newTermName("asInstanceOf"))
     lazy val Object_isInstanceOf = typeOf[Object].member(newTermName("isInstanceOf"))
     lazy val PartialFunctionClass = rootMirror.staticClass("scala.PartialFunction")
