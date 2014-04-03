@@ -99,8 +99,7 @@ object build extends Build {
     sharedSettings : _*
   ) settings (
     test in Test := (test in tests in Test).value,
-    publish := {},
-    publishSigned := {}
+    packagedArtifacts := Map.empty
   ) aggregate (quasiquotes, plugin)
 
   lazy val myma = Project(
