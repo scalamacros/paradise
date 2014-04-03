@@ -881,7 +881,7 @@ abstract class TreeInfo extends SymbolTableCompat {
     def unapply(tree: Tree) = tree match {
       case Apply(TypeApply(Select(qual, oper), _), List(Literal(Constant(name)))) if nameTest(oper) => Some((qual, name))
       case Apply(Select(qual, oper), List(Literal(Constant(name)))) if nameTest(oper) => Some((qual, name))
-      case Apply(Ident(oper), List(Literal(Constant(name)))) if nameTest(oper) => Some((EmptyTree, name))
+      case Apply(Ident(oper), List(Literal(Constant(name)))) if nameTest(oper) => Some((global.asInstanceOf[scala.reflect.api.Universe].EmptyTree.asInstanceOf[global.Tree], name))
       case _ => None
     }
   }

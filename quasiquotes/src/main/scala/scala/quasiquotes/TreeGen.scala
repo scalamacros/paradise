@@ -368,7 +368,7 @@ abstract class TreeGen extends SymbolTableCompat {
         // (when missing type annotation for ValDef for example), so even though setOriginal modifies the
         // position of TypeTree, it would still be NoPosition. That's what the author meant.
         tpt = atPos(vdef.pos.focus)(TypeTree() setOriginal tpt my_setPos tpt.pos.focus),
-        rhs = EmptyTree
+        rhs = global.asInstanceOf[scala.reflect.api.Universe].EmptyTree.asInstanceOf[global.Tree]
       )
     }
     val lvdefs = evdefs collect { case vdef: ValDef => copyValDef(vdef)(mods = vdef.mods my_| PRESUPER) }
@@ -404,7 +404,7 @@ abstract class TreeGen extends SymbolTableCompat {
     // constr foreach (ensureNonOverlapping(_, parents1 ::: gvdefs, focus=false))
 
     // Field definitions for the class - remove defaults.
-    val fieldDefs = vparamss.flatten map (vd => copyValDef(vd)(mods = vd.mods my_&~ DEFAULTPARAM, rhs = EmptyTree))
+    val fieldDefs = vparamss.flatten map (vd => copyValDef(vd)(mods = vd.mods my_&~ DEFAULTPARAM, rhs = global.asInstanceOf[scala.reflect.api.Universe].EmptyTree.asInstanceOf[global.Tree]))
 
     Template(parents1, self, gvdefs ::: fieldDefs ::: constr ++: etdefs ::: rest)
   }
