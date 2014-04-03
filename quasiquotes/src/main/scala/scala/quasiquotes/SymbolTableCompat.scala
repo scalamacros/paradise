@@ -1,6 +1,7 @@
 package scala.quasiquotes
 
 import scala.language.implicitConversions
+import scala.language.postfixOps
 import scala.reflect.internal.SymbolTable
 import scala.reflect.NameTransformer
 import scala.reflect.ClassTag
@@ -38,7 +39,7 @@ trait SymbolTableCompat { self =>
     }
 
     implicit class RichSymbol(sym: Symbol) {
-      def isDefaultGetter = sym.isTerm && (sym.name containsName nme.DEFAULT_GETTER_STRING)
+      def isDefaultGetter = sym.isTerm && (sym.name.toString contains nme.DEFAULT_GETTER_STRING)
       def setterName: TermName = sym.name.setterName
       def hasVolatileType = sym.tpe.isVolatile && !sym.hasAnnotation(uncheckedStableClass)
     }
@@ -52,6 +53,30 @@ trait SymbolTableCompat { self =>
         if (sym.owner.isModuleClass) sym.owner.sourceModule // fast path, if the member is owned by a module class, that must be linked to the package object
         else pre member nme.PACKAGE                         // otherwise we have to findMember
       }
+    }
+
+    def copyValDef(tree: Tree)(
+      mods: Modifiers = null,
+      name: Name      = null,
+      tpt: Tree       = null,
+      rhs: Tree       = null
+    ): ValDef = tree match {
+      case ValDef(mods0, name0, tpt0, rhs0) =>
+        treeCopy.ValDef(tree,
+          if (mods eq null) mods0 else mods,
+          if (name eq null) name0 else name,
+          if (tpt eq null) tpt0 else tpt,
+          if (rhs eq null) rhs0 else rhs
+        )
+      case t =>
+        sys.error("Not a ValDef: " + t + "/" + t.getClass)
+    }
+
+    def deriveTemplate(templ: Tree)(applyToBody: List[Tree] => List[Tree]): Template = templ match {
+      case Template(parents0, self0, body0) =>
+        treeCopy.Template(templ, parents0, self0, applyToBody(body0))
+      case t =>
+        sys.error("Not a Template: " + t + "/" + t.getClass)
     }
 
     def copyTypeDef(tree: Tree)(
@@ -110,22 +135,32 @@ trait SymbolTableCompat { self =>
      */
     final class NameOps[T <: Name](name: T) {
       import NameTransformer._
-      def stripSuffix(suffix: String): T = if (name endsWith suffix) dropRight(suffix.length) else name // OPT avoid creating a Name with `suffix`
-      def stripSuffix(suffix: Name): T   = if (name endsWith suffix) dropRight(suffix.length) else name
-      def take(n: Int): T                = name.subName(0, n).asInstanceOf[T]
-      def drop(n: Int): T                = name.subName(n, name.length).asInstanceOf[T]
-      def dropRight(n: Int): T           = name.subName(0, name.length - n).asInstanceOf[T]
-      def dropLocal: TermName            = name.toTermName stripSuffix nme.LOCAL_SUFFIX_STRING
-      def dropSetter: TermName           = name.toTermName stripSuffix nme.SETTER_SUFFIX_STRING
+      def stripSuffix(suffix: String): T = if (name.toString endsWith suffix.toString) dropRight(suffix.toString.length) else name // OPT avoid creating a Name with `suffix`
+      def stripSuffix(suffix: Name): T   = if (name.toString endsWith suffix.toString) dropRight(suffix.toString.length) else name
+      def take(n: Int): T                = name.my_subName(0, n).asInstanceOf[T]
+      def drop(n: Int): T                = name.my_subName(n, name.toString.length).asInstanceOf[T]
+      def dropRight(n: Int): T           = name.my_subName(0, name.toString.length - n).asInstanceOf[T]
+      def dropLocal: TermName            = newTermName(name.toString stripSuffix nme.LOCAL_SUFFIX_STRING)
+      def dropSetter: TermName           = newTermName(name.toString stripSuffix nme.SETTER_SUFFIX_STRING)
       def dropModule: T                  = this stripSuffix nme.MODULE_SUFFIX_STRING
-      def localName: TermName            = getterName append nme.LOCAL_SUFFIX_STRING
-      def setterName: TermName           = getterName append nme.SETTER_SUFFIX_STRING
+      def localName: TermName            = getterName my_append nme.LOCAL_SUFFIX_STRING toTermName
+      def setterName: TermName           = getterName my_append nme.SETTER_SUFFIX_STRING toTermName
       def getterName: TermName           = dropTraitSetterSeparator.dropSetter.dropLocal
+
+      def my_subName(start: Int, end: Int)  = {
+        if (name.isTermName) newTermName(name.toString.substring(start, end))
+        else newTypeName(name.toString.substring(start, end))
+      }
+
+      def my_append(suffix: String) = {
+        if (name.isTermName) newTermName(name.toString + suffix)
+        else newTypeName(name.toString + suffix)
+      }
 
       private def dropTraitSetterSeparator: TermName =
         name.toString indexOf nme.TRAIT_SETTER_SEPARATOR_STRING match {
           case -1  => name.toTermName
-          case idx => name.toTermName drop idx drop nme.TRAIT_SETTER_SEPARATOR_STRING.length
+          case idx => newTermName(name.toString drop idx drop nme.TRAIT_SETTER_SEPARATOR_STRING.toString.length)
         }
     }
 
@@ -259,8 +294,8 @@ trait SymbolTableCompat { self =>
     lazy val foreach: NameType = "foreach"
     def isConstructorName(name: Name) = name == CONSTRUCTOR || name == MIXIN_CONSTRUCTOR
     lazy val isDefinedAt: NameType = "isDefinedAt"
-    def isLocalName(name: Name) = name endsWith LOCAL_SUFFIX_STRING
-    def isSetterName(name: Name) = name endsWith SETTER_SUFFIX
+    def isLocalName(name: Name) = name.toString endsWith LOCAL_SUFFIX_STRING
+    def isSetterName(name: Name) = name.toString endsWith SETTER_SUFFIX.toString
     def isVariableName(name: Name): Boolean = {
       val first = name.toString.charAt(0)
       (    ((first.isLower && first.isLetter) || first == '_')

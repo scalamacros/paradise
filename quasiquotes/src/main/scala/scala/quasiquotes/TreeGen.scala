@@ -9,7 +9,7 @@ import scala.reflect.internal.SymbolTable
 abstract class TreeGen extends SymbolTableCompat {
   val global: SymbolTable
 
-  import global.{nme => _, tpnme => _, lowerTermNames => _, _}
+  import global.{nme => _, tpnme => _, lowerTermNames => _, copyValDef => _, _}
   import symbolTable._
   import definitions._
   import build.SyntacticApplied
@@ -823,10 +823,10 @@ abstract class TreeGen extends SymbolTableCompat {
     val buf = new ListBuffer[(Name, Tree, Position)]
 
     def namePos(tree: Tree, name: Name): Position =
-      if (!tree.pos.isRange || name.containsName(nme.raw.DOLLAR)) tree.pos.focus
+      if (!tree.pos.isRange || name.toString.contains(nme.raw.DOLLAR.toString)) tree.pos.focus
       else {
         val start = tree.pos.start
-        val end = start + name.decode.length
+        val end = start + name.decoded.length
         rangePos(tree.pos.source, start, start, end)
       }
 

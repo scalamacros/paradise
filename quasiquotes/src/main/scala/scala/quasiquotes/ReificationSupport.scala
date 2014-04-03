@@ -7,7 +7,7 @@ import scala.reflect.internal.SymbolTable
 abstract class ReificationSupport extends SymbolTableCompat { self =>
   val global: SymbolTable
 
-  import global.{definitions => _, nme => _, tpnme => _, lowerTermNames => _, _}
+  import global.{definitions => _, nme => _, tpnme => _, lowerTermNames => _, copyValDef => _, deriveTemplate => _, _}
   import symbolTable._
   import definitions._
 
@@ -317,7 +317,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
           def ctorArgsCorrespondToFields = vparamssRestoredImplicits.flatten.forall { vd => modsMap.contains(vd.name) }
           if (!ctorArgsCorrespondToFields) None
           else {
-            val vparamss = mmap(vparamssRestoredImplicits) { vd =>
+            val vparamss = scala.quasiquotes.Collections.mmap(vparamssRestoredImplicits) { vd =>
               val originalMods = modsMap(vd.name) | (vd.mods.flags & DEFAULTPARAM)
               atPos(vd.pos)(ValDef(originalMods, vd.name, vd.tpt, vd.rhs))
             }
@@ -568,7 +568,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       case DefDef(mods, nme.CONSTRUCTOR, tparams, vparamss, tpt, Block(List(expr), Literal(Constant(())))) =>
         Some((mods, nme.CONSTRUCTOR, tparams, vparamss, tpt, expr))
       case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-        Some((mods, name, tparams, vparamss, tpt, rhs))
+        Some((mods, name.toTermName, tparams, vparamss, tpt, rhs))
       case _ => None
     }
   }

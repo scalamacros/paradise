@@ -28,7 +28,7 @@ class Plugin(val global: Global) extends NscPlugin {
           if (resourcePath == null) abort("couldn't load whitelist.conf")
           io.Source.fromFile(resourcePath).getLines.toSet
         }
-        lazy val deps: Map[Symbol, Tree] = {
+        lazy val deps: Map[Symbol, List[Tree]] = {
           def isTrulyInternal(sym: Symbol): Boolean = {
             val doesntComeFromApi = !sym.allOverriddenSymbols.exists(sym => sym.fullName.startsWith("scala.reflect.api"))
             val doesntComeFromMacros = !sym.allOverriddenSymbols.exists(sym => sym.fullName.startsWith("scala.reflect.macros"))
@@ -40,14 +40,14 @@ class Plugin(val global: Global) extends NscPlugin {
             }
             doesntComeFromApi && doesntComeFromMacros && doesntComeFromStdDefs
           }
-          val deps = unit.body.collect{ case tree if tree.hasSymbol => (tree.symbol, tree) }.toMap
+          val deps = unit.body.collect{ case tree if tree.hasSymbol => (tree.symbol, tree) }.groupBy(_._1).mapValues(v => v.map(_._2))
           val relevant = deps.filterKeys(sym => !sym.isPackage && !sym.isModule)
           val internal = relevant.filterKeys(_.fullName.startsWith("scala.reflect.internal."))
           val trulyInternal = internal.filterKeys(isTrulyInternal)
           trulyInternal
         }
         val unauthorized = deps.filterKeys(dep => !whitelist.contains(dep.fullName))
-        unauthorized.foreach{ case (dep, usage) => unit.error(usage.pos, s"Usage of unauthorized API: ${dep.fullName}") }
+        unauthorized.foreach{ case (dep, usages) => usages.foreach(usage => unit.error(usage.pos, s"Usage of unauthorized API: ${dep.fullName}")) }
       }
     }
   }

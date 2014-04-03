@@ -7,7 +7,7 @@ import scala.reflect.internal.SymbolTable
 abstract class TreeInfo extends SymbolTableCompat {
   val global: SymbolTable
 
-  import global._
+  import global.{copyValDef => _, _}
   import symbolTable._
   import definitions.{ isVarArgsList, isCastSymbol, ThrowableClass, TupleClass, uncheckedStableClass }
 
@@ -91,7 +91,7 @@ abstract class TreeInfo extends SymbolTableCompat {
     tree match {
       case i @ Ident(_)    => isStableIdent(i, allowVolatile)
       case Select(qual, _) => isStableMemberOf(tree.symbol, qual, allowVolatile) && isPath(qual, allowVolatile)
-      case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name endsWith nme.REIFY_FREE_VALUE_SUFFIX =>
+      case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name.toString endsWith nme.REIFY_FREE_VALUE_SUFFIX.toString =>
         // see a detailed explanation of this trick in `GenSymbols.reifyFreeTerm`
         free.symbol.hasStableFlag && isPath(free, allowVolatile)
       case _               => false
@@ -165,7 +165,7 @@ abstract class TreeInfo extends SymbolTableCompat {
       tree.symbol.isStable && isExprSafeToInline(qual)
     case TypeApply(fn, _) =>
       isExprSafeToInline(fn)
-    case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name endsWith nme.REIFY_FREE_VALUE_SUFFIX =>
+    case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name.toString endsWith nme.REIFY_FREE_VALUE_SUFFIX.toString =>
       // see a detailed explanation of this trick in `GenSymbols.reifyFreeTerm`
       free.symbol.hasStableFlag && isExprSafeToInline(free)
     case Apply(fn, List()) =>
@@ -229,19 +229,19 @@ abstract class TreeInfo extends SymbolTableCompat {
       false
     }
 
-    if (plen == alen) foreach2(params, args)(f)
+    if (plen == alen) scala.quasiquotes.Collections.foreach2(params, args)(f)
     else if (params.isEmpty) return fail()
     else if (isVarArgsList(params)) {
       val plenInit = plen - 1
       if (alen == plenInit) {
         if (alen == 0) Nil        // avoid calling mismatched zip
-        else foreach2(params.init, args)(f)
+        else scala.quasiquotes.Collections.foreach2(params.init, args)(f)
       }
       else if (alen < plenInit) return fail()
       else {
-        foreach2(params.init, args take plenInit)(f)
+        scala.quasiquotes.Collections.foreach2(params.init, args take plenInit)(f)
         val remainingArgs = args drop plenInit
-        foreach2(List.fill(remainingArgs.size)(params.last), remainingArgs)(f)
+        scala.quasiquotes.Collections.foreach2(List.fill(remainingArgs.size)(params.last), remainingArgs)(f)
       }
     }
     else return fail()
@@ -449,7 +449,7 @@ abstract class TreeInfo extends SymbolTableCompat {
       case dd @ DefDef(mods, name, _, _, tpt, rhs) if mods.hasAccessorFlag =>
         // transform getter mods to field
         val vdMods = (if (!mods.hasStableFlag) mods | Flags.MUTABLE else mods &~ Flags.STABLE) &~ Flags.ACCESSOR
-        ValDef(vdMods, name, tpt, rhs)
+        ValDef(vdMods, name.toTermName, tpt, rhs)
       case tr => tr
     }
 
@@ -519,7 +519,7 @@ abstract class TreeInfo extends SymbolTableCompat {
   }
 
   /** Is name a left-associative operator? */
-  def isLeftAssoc(operator: Name) = operator.nonEmpty && (operator.endChar != ':')
+  def isLeftAssoc(operator: Name) = operator.toString.length > 0 && (operator.toString.last != ':')
 
   /** a Match(Typed(_, tpt), _) must be translated into a switch if isSwitchAnnotation(tpt.tpe) */
   def isSwitchAnnotation(tpe: Type) = tpe hasAnnotation definitions.SwitchClass
