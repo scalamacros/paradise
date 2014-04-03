@@ -202,7 +202,7 @@ abstract class TreeGen extends SymbolTableCompat {
       )
       val needsPackageQualifier = (
            (sym ne null)
-        && qualsym.hasPackageFlag
+        && qualsym.my_hasPackageFlag
         && !(sym.isDefinedInPackage || sym.moduleClass.isDefinedInPackage) // SI-7817 work around strangeness in post-flatten `Symbol#owner`
       )
       val pkgQualifier =
@@ -408,12 +408,12 @@ abstract class TreeGen extends SymbolTableCompat {
   }
 
   def mkParents(ownerMods: Modifiers, parents: List[Tree], parentPos: Position = NoPosition) =
-    if (ownerMods.isCase) parents ::: List(scalaDot(tpnme.Product), scalaDot(tpnme.Serializable))
+    if (ownerMods.my_isCase) parents ::: List(scalaDot(tpnme.Product), scalaDot(tpnme.Serializable))
     else if (parents.isEmpty) atPos(parentPos)(scalaAnyRefConstr) :: Nil
     else parents
 
   def mkClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], templ: Template): ClassDef = {
-    val isInterface = mods.isTrait && (templ.body forall treeInfo.isInterfaceMember)
+    val isInterface = mods.my_isTrait && (templ.body forall treeInfo.isInterfaceMember)
     val mods1 = if (isInterface) (mods my_| Flags.INTERFACE) else mods
     ClassDef(mods1, name, tparams, templ)
   }

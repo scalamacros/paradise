@@ -37,8 +37,8 @@ abstract class TreeInfo extends SymbolTableCompat {
     case EmptyTree                     => true
     case Import(_, _)                  => true
     case TypeDef(_, _, _, _)           => true
-    case DefDef(mods, _, _, _, _, __)  => mods.isDeferred
-    case ValDef(mods, _, _, _)         => mods.isDeferred
+    case DefDef(mods, _, _, _, _, __)  => mods.my_isDeferred
+    case ValDef(mods, _, _, _)         => mods.my_isDeferred
     case _ => false
   }
 
@@ -52,7 +52,7 @@ abstract class TreeInfo extends SymbolTableCompat {
        | DefDef(_, _, _, _, _, _) =>
       true
     case ValDef(mods, _, _, rhs) =>
-      !mods.isMutable && isExprSafeToInline(rhs)
+      !mods.my_isMutable && isExprSafeToInline(rhs)
     case _ =>
       false
   }
@@ -93,7 +93,7 @@ abstract class TreeInfo extends SymbolTableCompat {
       case Select(qual, _) => isStableMemberOf(tree.symbol, qual, allowVolatile) && isPath(qual, allowVolatile)
       case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name.toString endsWith nme.REIFY_FREE_VALUE_SUFFIX.toString =>
         // see a detailed explanation of this trick in `GenSymbols.reifyFreeTerm`
-        free.symbol.hasStableFlag && isPath(free, allowVolatile)
+        free.symbol.my_hasStableFlag && isPath(free, allowVolatile)
       case _               => false
     }
 
@@ -167,7 +167,7 @@ abstract class TreeInfo extends SymbolTableCompat {
       isExprSafeToInline(fn)
     case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name.toString endsWith nme.REIFY_FREE_VALUE_SUFFIX.toString =>
       // see a detailed explanation of this trick in `GenSymbols.reifyFreeTerm`
-      free.symbol.hasStableFlag && isExprSafeToInline(free)
+      free.symbol.my_hasStableFlag && isExprSafeToInline(free)
     case Apply(fn, List()) =>
       // Note: After uncurry, field accesses are represented as Apply(getter, Nil),
       // so an Apply can also be pure.
@@ -175,7 +175,7 @@ abstract class TreeInfo extends SymbolTableCompat {
       // Apply(function, Nil) trees. To prevent them from being treated as pure,
       // we check that the callee is a method.
       // The callee might also be a Block, which has a null symbol, so we guard against that (SI-7185)
-      fn.symbol != null && fn.symbol.isMethod && !fn.symbol.isLazy && isExprSafeToInline(fn)
+      fn.symbol != null && fn.symbol.isMethod && !fn.symbol.my_isLazy && isExprSafeToInline(fn)
     case Typed(expr, _) =>
       isExprSafeToInline(expr)
     case Block(stats, expr) =>
@@ -400,7 +400,7 @@ abstract class TreeInfo extends SymbolTableCompat {
   /** Does the tree have a structure similar to typechecked trees? */
   def detectTypecheckedTree(tree: Tree) =
     tree.hasExistingSymbol || tree.exists {
-      case dd: DefDef => dd.mods.hasAccessorFlag || dd.mods.isSynthetic // for untypechecked trees
+      case dd: DefDef => dd.mods.my_hasAccessorFlag || dd.mods.my_isSynthetic // for untypechecked trees
       case md: MemberDef => md.hasExistingSymbol
       case _ => false
     }
@@ -418,11 +418,11 @@ abstract class TreeInfo extends SymbolTableCompat {
     def filterBody(body: List[Tree]) = body filter {
       case _: ValDef | _: TypeDef => true
       // keep valdef or getter for val/var
-      case dd: DefDef if dd.mods.hasAccessorFlag => !nme.isSetterName(dd.name) && !tbody.exists {
+      case dd: DefDef if dd.mods.my_hasAccessorFlag => !nme.isSetterName(dd.name) && !tbody.exists {
         case vd: ValDef => dd.name == vd.name.dropLocal
         case _ => false
       }
-      case md: MemberDef => !md.mods.isSynthetic
+      case md: MemberDef => !md.mods.my_isSynthetic
       case tree => true
     }
 
@@ -442,13 +442,13 @@ abstract class TreeInfo extends SymbolTableCompat {
           // get access flags from DefDef
           val vdMods = (vmods my_&~ Flags.AccessFlags) my_| (dmods my_& Flags.AccessFlags).flags
           // for most cases lazy body should be taken from accessor DefDef
-          val vdRhs = if (vmods.isLazy) lazyValDefRhs(drhs) else vrhs
+          val vdRhs = if (vmods.my_isLazy) lazyValDefRhs(drhs) else vrhs
           copyValDef(vd)(mods = vdMods, name = dname, rhs = vdRhs)
         } getOrElse (vd)
       // for abstract and some lazy val/vars
-      case dd @ DefDef(mods, name, _, _, tpt, rhs) if mods.hasAccessorFlag =>
+      case dd @ DefDef(mods, name, _, _, tpt, rhs) if mods.my_hasAccessorFlag =>
         // transform getter mods to field
-        val vdMods = (if (!mods.hasStableFlag) mods my_| Flags.MUTABLE else mods my_&~ Flags.STABLE) my_&~ Flags.ACCESSOR
+        val vdMods = (if (!mods.my_hasStableFlag) mods my_| Flags.MUTABLE else mods my_&~ Flags.STABLE) my_&~ Flags.ACCESSOR
         ValDef(vdMods, name.toTermName, tpt, rhs)
       case tr => tr
     }
@@ -600,7 +600,7 @@ abstract class TreeInfo extends SymbolTableCompat {
 
   /** Is this CaseDef synthetically generated, e.g. by `MatchTranslation.translateTry`? */
   def isSyntheticCase(cdef: CaseDef) = cdef.pat.exists {
-    case dt: DefTree => dt.symbol.isSynthetic
+    case dt: DefTree => dt.symbol.my_isSynthetic
     case _           => false
   }
 

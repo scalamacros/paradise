@@ -42,6 +42,10 @@ trait SymbolTableCompat { self =>
       def isDefaultGetter = sym.isTerm && (sym.name.toString contains nme.DEFAULT_GETTER_STRING)
       def setterName: TermName = sym.name.setterName
       def hasVolatileType = sym.tpe.isVolatile && !sym.hasAnnotation(uncheckedStableClass)
+      def my_hasStableFlag = sym hasFlag STABLE
+      def my_hasPackageFlag = sym hasFlag PACKAGE
+      def my_isSynthetic = sym.isTerm && (sym.asTerm: scala.reflect.api.Symbols#TermSymbol).isSynthetic
+      def my_isLazy = sym.isTerm && (sym.asTerm: scala.reflect.api.Symbols#TermSymbol).isLazy
     }
 
     implicit class RichMirror(rb: RootsBase) {
@@ -76,6 +80,15 @@ trait SymbolTableCompat { self =>
         else Modifiers(mods.flags, mods.privateWithin, mods.annotations ::: annots) // setPositions mods.positions
       }
       def isLocalToThis = mods hasFlag LOCAL
+      def my_isCase = mods hasFlag CASE
+      def my_hasAccessorFlag = mods hasFlag ACCESSOR
+      def my_hasStableFlag = mods hasFlag STABLE
+      def my_isImplicit = mods hasFlag IMPLICIT
+      def my_isDeferred = mods hasFlag DEFERRED
+      def my_isSynthetic = mods hasFlag SYNTHETIC
+      def my_isLazy = mods hasFlag LAZY
+      def my_isMutable = mods hasFlag MUTABLE
+      def my_isTrait = mods hasFlag TRAIT
     }
 
     def copyValDef(tree: Tree)(

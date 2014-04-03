@@ -173,7 +173,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   }
 
   def mkEarlyDef(defn: Tree): Tree = defn match {
-    case vdef @ ValDef(mods, _, _, _) if !mods.isDeferred =>
+    case vdef @ ValDef(mods, _, _, _) if !mods.my_isDeferred =>
       copyValDef(vdef)(mods = mods my_| PRESUPER)
     case tdef @ TypeDef(mods, _, _, _) =>
       copyTypeDef(tdef)(mods = mods my_| PRESUPER)
@@ -196,7 +196,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       if (implparams.nonEmpty) paramss :+ mkImplicitParam(implparams) else paramss
 
     def unapply(vparamss: List[List[ValDef]]): Some[(List[List[ValDef]], List[ValDef])] = vparamss match {
-      case init :+ (last @ (initlast :: _)) if initlast.mods.isImplicit => Some((init, last))
+      case init :+ (last @ (initlast :: _)) if initlast.mods.my_isImplicit => Some((init, last))
       case _ => Some((vparamss, Nil))
     }
   }
@@ -304,7 +304,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
             copyValDef(gvdef)(tpt = tpt, rhs = rhs)
         }
         val edefs = evdefs ::: etdefs
-        if (ctorMods.isTrait)
+        if (ctorMods.my_isTrait)
           result(ctorMods, Nil, edefs, parents, body)
         else {
           // undo conversion from (implicit ... ) to ()(implicit ... ) when its the only parameter section
@@ -341,11 +341,11 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     def apply(mods: Modifiers, name: TypeName, tparams: List[Tree],
               constrMods: Modifiers, vparamss: List[List[Tree]],
               earlyDefs: List[Tree], parents: List[Tree], selfType: Tree, body: List[Tree]): ClassDef = {
-      val extraFlags = PARAMACCESSOR | (if (mods.isCase) CASEACCESSOR else 0L)
+      val extraFlags = PARAMACCESSOR | (if (mods.my_isCase) CASEACCESSOR else 0L)
       val vparamss0 = mkParam(vparamss, extraFlags, excludeFlags = DEFERRED | PARAM)
       val tparams0 = mkTparams(tparams)
       val parents0 = gen.mkParents(mods,
-        if (mods.isCase) parents.filter {
+        if (mods.my_isCase) parents.filter {
           case ScalaDot(tpnme.Product | tpnme.Serializable | tpnme.AnyRef) => false
           case _ => true
         } else parents
@@ -359,7 +359,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     def unapply(tree: Tree): Option[(Modifiers, TypeName, List[TypeDef], Modifiers, List[List[ValDef]],
                                      List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
       case ClassDef(mods, name, tparams, UnMkTemplate(parents, selfType, ctorMods, vparamss, earlyDefs, body))
-        if !ctorMods.isTrait && !ctorMods.hasFlag(JAVA) =>
+        if !ctorMods.my_isTrait && !ctorMods.hasFlag(JAVA) =>
         Some((mods, name, tparams, ctorMods, vparamss, earlyDefs, parents, selfType, body))
       case _ =>
         None
@@ -377,7 +377,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     def unapply(tree: Tree): Option[(Modifiers, TypeName, List[TypeDef],
                                      List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
       case ClassDef(mods, name, tparams, UnMkTemplate(parents, selfType, ctorMods, vparamss, earlyDefs, body))
-        if mods.isTrait =>
+        if mods.my_isTrait =>
         Some((mods, name, tparams, earlyDefs, parents, selfType, body))
       case _ => None
     }
@@ -731,8 +731,9 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
 
   // undo gen.mkFor:makeClosure
   protected object UnClosure {
+    private val PARAM = 1 << 13
     def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
-      case Function(ValDef(Modifiers(PARAM, _, _), name, tpt, EmptyTree) :: Nil, body) =>
+      case Function(ValDef(Modifiers(FlagsRepr(PARAM), _, _), name, tpt, EmptyTree) :: Nil, body) =>
         tpt match {
           case SyntacticEmptyTypeTree() => Some((Bind(name, global.Ident(nme.WILDCARD)), body))
           case _                        => Some((Bind(name, Typed(global.Ident(nme.WILDCARD), tpt)), body))
