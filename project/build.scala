@@ -120,6 +120,7 @@ object build extends Build {
   ) settings (
     publishableSettings : _*
   ) settings (
+    crossVersion := CrossVersion.binary,
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0-M5" cross CrossVersion.full),
     javacOptions ++= Seq("-target", "1.6", "-source", "1.6"),
