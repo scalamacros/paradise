@@ -3,6 +3,8 @@ import Keys._
 import sbtassembly.Plugin._
 import AssemblyKeys._
 import com.typesafe.sbt.pgp.PgpKeys._
+import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
+import com.typesafe.tools.mima.plugin.MimaKeys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
@@ -117,7 +119,7 @@ object build extends Build {
     id   = "quasiquotes",
     base = file("quasiquotes")
   ) settings (
-    publishableSettings : _*
+    publishableSettings ++ mimaDefaultSettings : _*
   ) settings (
     crossVersion := CrossVersion.binary,
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
@@ -129,6 +131,15 @@ object build extends Build {
       val addPlugin = "-Xplugin:" + jar.getAbsolutePath
       val dummy = "-Jdummy=" + jar.lastModified
       Seq(addPlugin, dummy)
+    },
+    previousArtifact := Some("org.scalamacros" % "quasiquotes_2.10" % "2.0.0-M7"),
+    Keys.`package` in Compile := {
+      if (findBinaryIssues.value.nonEmpty) throw new Exception("binary incompatible with " + previousArtifact.value)
+      (Keys.`package` in Compile).value
+    },
+    packagedArtifact in Compile in packageBin := {
+      if (findBinaryIssues.value.nonEmpty) throw new Exception("binary incompatible with " + previousArtifact.value)
+      (packagedArtifact in Compile in packageBin).value
     }
   )
 
