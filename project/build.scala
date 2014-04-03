@@ -13,9 +13,6 @@ object build extends Build {
     description := "Empowers production Scala compiler with latest macro developments",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
-    publishMavenStyle := true,
-    publishArtifact in Compile := false,
-    publishArtifact in Test := false,
     scalacOptions ++= Seq("-deprecation", "-feature", "-optimise"),
     parallelExecution in Test := false, // hello, reflection sync!!
     logBuffered := false,
@@ -26,11 +23,8 @@ object build extends Build {
         Some(file(scalaHome))
       } else None
     },
-    sources in (Compile, doc) ~= (_ filter (_.getName endsWith ".scala"))
-  )
-
-  lazy val publishableSettings = sharedSettings ++ Seq(
-    publishMavenStyle := true,
+    sources in (Compile, doc) ~= (_ filter (_.getName endsWith ".scala")),
+    publishArtifact in Compile := false,
     publishArtifact in Test := false,
     publishTo <<= version { v: String =>
       val nexus = "https://oss.sonatype.org/"
@@ -39,6 +33,7 @@ object build extends Build {
       else
         Some("releases" at nexus + "service/local/staging/deploy/maven2")
     },
+    publishMavenStyle := true,
     pomIncludeRepository := { x => false },
     pomExtra := (
       <url>https://github.com/scalamacros/paradise</url>
@@ -65,38 +60,43 @@ object build extends Build {
           <url>http://xeno.by</url>
         </developer>
       </developers>
-    ),
-    credentials ++= loadCredentials()
+    )
   )
 
-  def loadCredentials(): List[Credentials] = {
-    val mavenSettingsFile = System.getProperty("maven.settings.file")
-    if (mavenSettingsFile != null) {
-      println("Loading Sonatype credentials from " + mavenSettingsFile)
-      try {
-        import scala.xml._
-        val settings = XML.loadFile(mavenSettingsFile)
-        def readServerConfig(key: String) = (settings \\ "settings" \\ "servers" \\ "server" \\ key).head.text
-        List(Credentials(
-          "Sonatype Nexus Repository Manager",
-          "oss.sonatype.org",
-          readServerConfig("username"),
-          readServerConfig("password")
-        ))
-      } catch {
-        case ex: Exception =>
-          println("Failed to load Maven settings from " + mavenSettingsFile + ": " + ex)
-          Nil
+  lazy val publishableSettings = sharedSettings ++ Seq(
+    publishArtifact in Compile := true,
+    publishArtifact in Test := false,
+    credentials ++= {
+      val mavenSettingsFile = System.getProperty("maven.settings.file")
+      if (mavenSettingsFile != null) {
+        println("Loading Sonatype credentials from " + mavenSettingsFile)
+        try {
+          import scala.xml._
+          val settings = XML.loadFile(mavenSettingsFile)
+          def readServerConfig(key: String) = (settings \\ "settings" \\ "servers" \\ "server" \\ key).head.text
+          List(Credentials(
+            "Sonatype Nexus Repository Manager",
+            "oss.sonatype.org",
+            readServerConfig("username"),
+            readServerConfig("password")
+          ))
+        } catch {
+          case ex: Exception =>
+            println("Failed to load Maven settings from " + mavenSettingsFile + ": " + ex)
+            Nil
+        }
+      } else {
+        // println("Sonatype credentials cannot be loaded: -Dmaven.settings.file is not specified.")
+        Nil
       }
-    } else {
-      // println("Sonatype credentials cannot be loaded: -Dmaven.settings.file is not specified.")
-      Nil
     }
-  }
+  )
 
   lazy val root = Project(
     id = "root",
     base = file("root")
+  ) settings (
+    sharedSettings : _*
   ) settings (
     test in Test := (test in tests in Test).value,
     publish := {},
