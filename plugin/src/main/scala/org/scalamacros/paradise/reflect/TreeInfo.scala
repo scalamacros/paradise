@@ -5,7 +5,7 @@ trait TreeInfo {
   self: Enrichments =>
 
   import global._
-  import compat.build._
+  import compat.build.{nme => _, tpnme => _, _}
 
   implicit class ParadiseTreeInfo(treeInfo: global.treeInfo.type) {
     def primaryConstructorArity(tree: ClassDef): Int = treeInfo.firstConstructor(tree.impl.body) match {

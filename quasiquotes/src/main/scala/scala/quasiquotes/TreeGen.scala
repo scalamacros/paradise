@@ -9,7 +9,7 @@ import scala.reflect.internal.SymbolTable
 abstract class TreeGen extends SymbolTableCompat {
   val global: SymbolTable
 
-  import global._
+  import global.{nme => _, tpnme => _, lowerTermNames => _, _}
   import symbolTable._
   import definitions._
   import build.SyntacticApplied
@@ -787,7 +787,7 @@ abstract class TreeGen extends SymbolTableCompat {
         CaseDef(pat.duplicate, EmptyTree, Literal(Constant(true))),
         CaseDef(Ident(nme.WILDCARD), EmptyTree, Literal(Constant(false)))
       )
-      val visitor = mkVisitor(cases, checkExhaustive = false, nme.CHECK_IF_REFUTABLE_STRING)
+      val visitor = mkVisitor(cases, checkExhaustive = false, nme.CHECK_IF_REFUTABLE_STRING.toString)
       atPos(rhs.pos)(Apply(Select(rhs, nme.withFilter), visitor :: Nil))
     }
 

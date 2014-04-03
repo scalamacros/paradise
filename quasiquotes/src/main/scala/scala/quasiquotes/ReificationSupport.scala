@@ -7,7 +7,7 @@ import scala.reflect.internal.SymbolTable
 abstract class ReificationSupport extends SymbolTableCompat { self =>
   val global: SymbolTable
 
-  import global.{definitions => _, _}
+  import global.{definitions => _, nme => _, tpnme => _, lowerTermNames => _, _}
   import symbolTable._
   import definitions._
 
@@ -696,7 +696,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       case _                        => gen.mkPatDef(mods, Typed(pat, tpt), rhs)
     }
     def unapply(tree: Tree): Option[(Modifiers, Tree, Tree, Tree)] = tree match {
-      case ValDef(mods, compatnme.QUASIQUOTE_PAT_DEF, Typed(pat,  tpt), rhs) => Some((mods, pat, tpt, rhs))
+      case ValDef(mods, nme.QUASIQUOTE_PAT_DEF, Typed(pat,  tpt), rhs) => Some((mods, pat, tpt, rhs))
       case _ => None
     }
   }
@@ -868,10 +868,10 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   // drop potential @scala.unchecked annotation
   protected object MaybeUnchecked {
     def unapply(tree: Tree): Some[Tree] = tree match {
-      case Annotated(SyntacticNew(Nil, ScalaDot(compattpnme.unchecked) :: Nil, emptyValDef, Nil), annottee) =>
+      case Annotated(SyntacticNew(Nil, ScalaDot(tpnme.unchecked) :: Nil, emptyValDef, Nil), annottee) =>
         Some(annottee)
       case Typed(annottee, MaybeTypeTreeOriginal(
-        Annotated(SyntacticNew(Nil, ScalaDot(compattpnme.unchecked) :: Nil, emptyValDef, Nil), _))) =>
+        Annotated(SyntacticNew(Nil, ScalaDot(tpnme.unchecked) :: Nil, emptyValDef, Nil), _))) =>
         Some(annottee)
       case annottee => Some(annottee)
     }
@@ -1031,7 +1031,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
       def apply(left: Tree, right: Tree): Apply =
         Apply(global.Ident(nme.MINGT), left :: right :: Nil)
       def unapply(tree: Apply): Option[(Tree, Tree)] = tree match {
-        case Apply(global.Ident(compatnme.MINGT), left :: right :: Nil) => Some((left, right))
+        case Apply(global.Ident(nme.MINGT), left :: right :: Nil) => Some((left, right))
         case _ => None
       }
     }

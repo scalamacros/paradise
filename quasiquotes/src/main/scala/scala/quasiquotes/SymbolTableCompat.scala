@@ -16,7 +16,7 @@ trait SymbolTableCompat { self =>
   lazy val build: ReificationSupport { val global: self.global.type } = new { val global: self.global.type = self.global } with ReificationSupport
 
   object symbolTable {
-    import global.{nameToNameOps => _, definitions => _, _}
+    import global.{nameToNameOps => _, definitions => _, nme => _, lowerTermNames => _, _}
     import definitions._
 
     type Name = global.Name
@@ -100,19 +100,6 @@ trait SymbolTableCompat { self =>
     }
 
     implicit def enrichSymbolTable(symtab: SymbolTable): symbolTable.type = symbolTable
-
-    implicit def nmeCompat(nme: global.nme.type): compatnme.type = compatnme
-    object compatnme {
-      val FRESH_TERM_NAME_PREFIX = "x$"
-      val MINGT                  = TermName(NameTransformer.encode("->"))
-      val QUASIQUOTE_PAT_DEF     = TermName("$quasiquote$pat$def$")
-      val SETTER_SUFFIX_STRING   = "_$eq"
-    }
-
-    implicit def tpnmeCompat(nme: global.tpnme.type): compattpnme.type = compattpnme
-    object compattpnme {
-      final val unchecked = TypeName("unchecked")
-    }
 
     implicit def AnyNameOps(name: Name): NameOps[Name]          = new NameOps(name)
     implicit def TermNameOps(name: TermName): NameOps[TermName] = new NameOps(name)
@@ -231,5 +218,115 @@ trait SymbolTableCompat { self =>
     lazy val ShortClass = global.definitions.ShortClass
     lazy val UnitClass = global.definitions.UnitClass
     lazy val UnitTpe = global.definitions.UnitTpe
+  }
+
+  trait CommonNames {
+    import global._
+    type NameType >: Null <: Name
+    protected val stringToTermName = null
+    protected val stringToTypeName = null
+    protected implicit def createNameType(name: String): NameType
+    lazy val ANON_CLASS_NAME: NameType = "$anon"
+    lazy val ANON_FUN_NAME: NameType = "$anonfun"
+    lazy val AnyRef: NameType = "AnyRef"
+    lazy val MODULE_SUFFIX_STRING: NameType = scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
+    lazy val Unit: NameType = "Unit"
+  }
+
+  trait KeywordNames {
+    import global._
+    lazy val IFkw: TermName = newTermName("if")
+    lazy val LARROWkw: TermName = newTermName("<-")
+    lazy val PACKAGEkw: TermName = newTermName("package")
+    lazy val YIELDkw: TermName = newTermName("yield")
+  }
+
+  object nme extends CommonNames with KeywordNames {
+    import global.{nme => _, tpnme => _, _}
+    type NameType = TermName
+    protected implicit def createNameType(name: String): TermName = newTermName(name)
+    lazy val annotation: NameType = "annotation"
+    lazy val apply: NameType = "apply"
+    lazy val applyDynamic: NameType = "applyDynamic"
+    lazy val applyDynamicNamed: NameType = "applyDynamicNamed"
+    lazy val applyOrElse: NameType = "applyOrElse"
+    lazy val CHECK_IF_REFUTABLE_STRING: String = "check$ifrefutable$"
+    lazy val DEFAULT_CASE: NameType = "defaultCase$"
+    lazy val DEFAULT_GETTER_STRING: NameType = "$default$"
+    lazy val false_ : NameType = "false"
+    lazy val filter: NameType = "filter"
+    lazy val flatMap: NameType = "flatMap"
+    lazy val foreach: NameType = "foreach"
+    def isConstructorName(name: Name) = name == CONSTRUCTOR || name == MIXIN_CONSTRUCTOR
+    lazy val isDefinedAt: NameType = "isDefinedAt"
+    def isLocalName(name: Name) = name endsWith LOCAL_SUFFIX_STRING
+    def isSetterName(name: Name) = name endsWith SETTER_SUFFIX
+    def isVariableName(name: Name): Boolean = {
+      val first = name.toString.charAt(0)
+      (    ((first.isLower && first.isLetter) || first == '_')
+        && (name != nme.false_)
+        && (name != nme.true_)
+        && (name != nme.null_)
+      )
+    }
+    lazy val map: NameType = "map"
+    lazy val MIXIN_CONSTRUCTOR: NameType = "$init$"
+    lazy val Predef: NameType = "Predef"
+    object raw {
+      lazy val DOLLAR: NameType = "$"
+    }
+    lazy val REIFY_FREE_VALUE_SUFFIX: NameType = "$value"
+    lazy val scala_ : NameType = "scala"
+    def segments(name: String, assumeTerm: Boolean): List[Name] = {
+      def mkName(str: String, term: Boolean): Name =
+        if (term) newTermName(str) else newTypeName(str)
+
+      name.indexWhere(ch => ch == '.' || ch == '#') match {
+        // it's the last segment: the parameter tells us whether type or term
+        case -1     => if (name == "") scala.Nil else scala.List(mkName(name, assumeTerm))
+        // otherwise, we can tell based on whether '#' or '.' is the following char.
+        case idx    =>
+          val (simple, div, rest) = (name take idx, name charAt idx, name drop idx + 1)
+          mkName(simple, div == '.') :: segments(rest, assumeTerm)
+      }
+    }
+    lazy val selectDynamic: NameType = "selectDynamic"
+    lazy val SELECTOR_DUMMY: NameType = "<unapply-selector>"
+    lazy val TRAIT_SETTER_SEPARATOR_STRING: NameType = "$_setter_$"
+    lazy val true_ : NameType = "true"
+    lazy val unapply: NameType = "unapply"
+    lazy val update: NameType = "update"
+    lazy val updateDynamic: NameType = "updateDynamic"
+    lazy val withFilter: NameType = "withFilter"
+    lazy val FRESH_TERM_NAME_PREFIX = "x$"
+    lazy val MINGT = newTermName("->").encodedName
+    lazy val null_ : NameType = "null"
+    lazy val QUASIQUOTE_PAT_DEF = newTermName("$quasiquote$pat$def$")
+    lazy val SETTER_SUFFIX_STRING = "_$eq"
+    lazy val SETTER_SUFFIX: NameType = newTermName("_=").encodedName
+    lazy val WILDCARD: NameType = global.nme.WILDCARD
+    lazy val EMPTY: NameType = global.nme.EMPTY
+    lazy val ERROR: NameType = global.nme.ERROR
+    lazy val PACKAGE: NameType = global.nme.PACKAGE
+    lazy val CONSTRUCTOR: NameType = global.nme.CONSTRUCTOR
+    lazy val ROOTPKG: NameType = global.nme.ROOTPKG
+    lazy val LOCAL_SUFFIX_STRING: String = global.nme.LOCAL_SUFFIX_STRING
+  }
+
+  object tpnme extends CommonNames {
+    import global._
+    type NameType = TypeName
+    protected implicit def createNameType(name: String): TypeName = newTypeName(name)
+    lazy val BYNAME_PARAM_CLASS_NAME: NameType = "<byname>"
+    lazy val JAVA_REPEATED_PARAM_CLASS_NAME: NameType = "<repeated...>"
+    lazy val Product: NameType = "Product"
+    lazy val REPEATED_PARAM_CLASS_NAME: NameType = "<repeated>"
+    lazy val Serializable: NameType = "Serializable"
+    lazy val unchecked: NameType = "unchecked"
+    lazy val WILDCARD: NameType = global.tpnme.WILDCARD
+    lazy val EMPTY: NameType = global.tpnme.EMPTY
+    lazy val ERROR: NameType = global.tpnme.ERROR
+    lazy val PACKAGE: NameType = global.tpnme.PACKAGE
+    lazy val WILDCARD_STAR: NameType = global.tpnme.WILDCARD_STAR
   }
 }

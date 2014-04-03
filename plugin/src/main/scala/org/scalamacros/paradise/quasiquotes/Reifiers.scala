@@ -7,8 +7,8 @@ import scala.reflect.internal.Flags._
 
 trait Reifiers { self: Quasiquotes =>
   import global.{build => _, gen => _, _}
-  import compat.build._
-  import compat.treeInfo.{build => _, gen => _, _}
+  import compat.build.{nme => _, tpnme => _, _}
+  import compat.treeInfo.{build => _, gen => _, nme => _, tpnme => _, _}
   import compat.symbolTable.RefTree
   import global.definitions._
   import paradiseDefinitions._
