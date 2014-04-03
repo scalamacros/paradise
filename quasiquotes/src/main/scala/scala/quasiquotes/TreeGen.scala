@@ -99,8 +99,7 @@ abstract class TreeGen extends SymbolTableCompat {
         } else if (sym.isModuleClass) {
           mkApplyIfNeeded(mkAttributedRef(pre, sym.sourceModule))
         } else if (sym.isModule || sym.isClass) {
-          assert(phase.erasedTypes, failMessage)
-          mkAttributedThis(sym)
+          abort(failMessage)
         } else if (sym.isType) {
           assert(termSym != NoSymbol, failMessage)
           mkAttributedIdent(termSym) setType tpe
@@ -365,7 +364,7 @@ abstract class TreeGen extends SymbolTableCompat {
         // atPos for the new tpt is necessary, since the original tpt might have no position
         // (when missing type annotation for ValDef for example), so even though setOriginal modifies the
         // position of TypeTree, it would still be NoPosition. That's what the author meant.
-        tpt = atPos(vdef.pos.focus)(TypeTree() setOriginal tpt setPos tpt.pos.focus),
+        tpt = atPos(vdef.pos.focus)(TypeTree() setOriginal tpt my_setPos tpt.pos.focus),
         rhs = EmptyTree
       )
     }
@@ -446,7 +445,7 @@ abstract class TreeGen extends SymbolTableCompat {
             }),
           atPos(npos) {
             New(
-              Ident(x) setPos npos.focus,
+              Ident(x) my_setPos npos.focus,
               Nil)
           }
         )
@@ -461,7 +460,7 @@ abstract class TreeGen extends SymbolTableCompat {
    *  written by end user. It's important to distinguish the two so that
    *  quasiquotes can strip synthetic ones away.
    */
-  def mkSyntheticUnit() = Literal(Constant(())).updateAttachment(SyntheticUnitAttachment)
+  def mkSyntheticUnit() = Literal(Constant(())).my_updateAttachment(SyntheticUnitAttachment)
 
   /** Create block of statements `stats`  */
   def mkBlock(stats: List[Tree]): Tree =
@@ -517,7 +516,7 @@ abstract class TreeGen extends SymbolTableCompat {
   /** Encode/decode fq"$pat <- $rhs" enumerator as q"`<-`($pat, $rhs)" */
   object ValFrom {
     def apply(pat: Tree, rhs: Tree): Tree =
-      Apply(Ident(nme.LARROWkw).updateAttachment(ForAttachment),
+      Apply(Ident(nme.LARROWkw).my_updateAttachment(ForAttachment),
         List(pat, rhs))
 
     def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
@@ -531,7 +530,7 @@ abstract class TreeGen extends SymbolTableCompat {
   /** Encode/decode fq"$pat = $rhs" enumerator as q"$pat = $rhs" */
   object ValEq {
     def apply(pat: Tree, rhs: Tree): Tree =
-      Assign(pat, rhs).updateAttachment(ForAttachment)
+      Assign(pat, rhs).my_updateAttachment(ForAttachment)
 
     def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
       case Assign(pat, rhs)
@@ -544,7 +543,7 @@ abstract class TreeGen extends SymbolTableCompat {
   /** Encode/decode fq"if $cond" enumerator as q"`if`($cond)" */
   object Filter {
     def apply(tree: Tree) =
-      Apply(Ident(nme.IFkw).updateAttachment(ForAttachment), List(tree))
+      Apply(Ident(nme.IFkw).my_updateAttachment(ForAttachment), List(tree))
 
     def unapply(tree: Tree): Option[Tree] = tree match {
       case Apply(id @ Ident(nme.IFkw), List(cond))
@@ -557,7 +556,7 @@ abstract class TreeGen extends SymbolTableCompat {
   /** Encode/decode body of for yield loop as q"`yield`($tree)" */
   object Yield {
     def apply(tree: Tree): Tree =
-      Apply(Ident(nme.YIELDkw).updateAttachment(ForAttachment), List(tree))
+      Apply(Ident(nme.YIELDkw).my_updateAttachment(ForAttachment), List(tree))
 
     def unapply(tree: Tree): Option[Tree] = tree match {
       case Apply(id @ Ident(nme.YIELDkw), List(tree))
@@ -632,7 +631,7 @@ abstract class TreeGen extends SymbolTableCompat {
         case Some((name, tpt)) =>
           Function(
             List(atPos(pat.pos) { ValDef(Modifiers(PARAM), name.toTermName, tpt, EmptyTree) }),
-            body) setPos splitpos
+            body) my_setPos splitpos
         case None =>
           atPos(splitpos) {
             mkVisitor(List(CaseDef(pat, EmptyTree, body)), checkExhaustive = false)
@@ -645,18 +644,18 @@ abstract class TreeGen extends SymbolTableCompat {
     def makeCombination(pos: Position, meth: TermName, qual: Tree, pat: Tree, body: Tree): Tree =
       // ForAttachment on the method selection is used to differentiate
       // result of for desugaring from a regular method call
-      Apply(Select(qual, meth) setPos qual.pos updateAttachment ForAttachment,
-        List(makeClosure(pos, pat, body))) setPos pos
+      Apply(Select(qual, meth) my_setPos qual.pos my_updateAttachment ForAttachment,
+        List(makeClosure(pos, pat, body))) my_setPos pos
 
     /* If `pat` is not yet a `Bind` wrap it in one with a fresh name */
     def makeBind(pat: Tree): Tree = pat match {
       case Bind(_, _) => pat
-      case _ => Bind(freshTermName(), pat) setPos pat.pos
+      case _ => Bind(freshTermName(), pat) my_setPos pat.pos
     }
 
     /* A reference to the name bound in Bind `pat`. */
     def makeValue(pat: Tree): Tree = pat match {
-      case Bind(name, _) => Ident(name) setPos pat.pos.focus
+      case Bind(name, _) => Ident(name) my_setPos pat.pos.focus
     }
 
     /* The position of the closure that starts with generator at position `genpos`. */
@@ -677,7 +676,7 @@ abstract class TreeGen extends SymbolTableCompat {
         makeCombination(closurePos(t.pos), flatMapName, rhs, pat,
                         mkFor(rest, sugarBody))
       case (t @ ValFrom(pat, rhs)) :: Filter(test) :: rest =>
-        mkFor(ValFrom(pat, makeCombination(rhs.pos union test.pos, nme.withFilter, rhs, pat.duplicate, test)).setPos(t.pos) :: rest, sugarBody)
+        mkFor(ValFrom(pat, makeCombination(rhs.pos union test.pos, nme.withFilter, rhs, pat.duplicate, test)).my_setPos(t.pos) :: rest, sugarBody)
       case (t @ ValFrom(pat, rhs)) :: rest =>
         val valeqs = rest.take(definitions.MaxTupleArity - 1).takeWhile { ValEq.unapply(_).nonEmpty }
         assert(!valeqs.isEmpty)
@@ -689,13 +688,13 @@ abstract class TreeGen extends SymbolTableCompat {
         val pdefs = (defpats, rhss).zipped flatMap mkPatDef
         val ids = (defpat1 :: defpats) map makeValue
         val rhs1 = mkFor(
-          List(ValFrom(defpat1, rhs).setPos(t.pos)),
-          Yield(Block(pdefs, atPos(wrappingPos(ids)) { mkTuple(ids) }) setPos wrappingPos(pdefs)))
+          List(ValFrom(defpat1, rhs).my_setPos(t.pos)),
+          Yield(Block(pdefs, atPos(wrappingPos(ids)) { mkTuple(ids) }) my_setPos wrappingPos(pdefs)))
         val allpats = (pat :: pats) map (_.duplicate)
         val pos1 =
           if (t.pos == NoPosition) NoPosition
           else rangePos(t.pos.source, t.pos.start, t.pos.point, rhs1.pos.end)
-        val vfrom1 = ValFrom(atPos(wrappingPos(allpats)) { mkTuple(allpats) }, rhs1).setPos(pos1)
+        val vfrom1 = ValFrom(atPos(wrappingPos(allpats)) { mkTuple(allpats) }, rhs1).my_setPos(pos1)
         mkFor(vfrom1 :: rest1, sugarBody)
       case _ =>
         EmptyTree //may happen for erroneous input
@@ -737,7 +736,7 @@ abstract class TreeGen extends SymbolTableCompat {
         case Typed(expr, tpt) if !expr.isInstanceOf[Ident] =>
           val rhsTypedUnchecked =
             if (tpt.isEmpty) rhsUnchecked
-            else Typed(rhsUnchecked, tpt) setPos (rhs.pos union tpt.pos)
+            else Typed(rhsUnchecked, tpt) my_setPos (rhs.pos union tpt.pos)
           (expr, rhsTypedUnchecked)
         case ok =>
           (ok, rhsUnchecked)
@@ -776,8 +775,8 @@ abstract class TreeGen extends SymbolTableCompat {
   /** Create tree for for-comprehension generator <val pat0 <- rhs0> */
   def mkGenerator(pos: Position, pat: Tree, valeq: Boolean, rhs: Tree)(implicit fresh: FreshNameCreator): Tree = {
     val pat1 = patvarTransformer.transform(pat)
-    if (valeq) ValEq(pat1, rhs).setPos(pos)
-    else ValFrom(pat1, mkCheckIfRefutable(pat1, rhs)).setPos(pos)
+    if (valeq) ValEq(pat1, rhs).my_setPos(pos)
+    else ValFrom(pat1, mkCheckIfRefutable(pat1, rhs)).my_setPos(pos)
   }
 
   def mkCheckIfRefutable(pat: Tree, rhs: Tree)(implicit fresh: FreshNameCreator) =
@@ -854,7 +853,7 @@ abstract class TreeGen extends SymbolTableCompat {
           super.traverse(tree)
       }
       if (buf.length > bl)
-        tree setPos tree.pos.makeTransparent
+        tree my_setPos tree.pos.makeTransparent
     }
     def apply(tree: Tree) = {
       traverse(tree)

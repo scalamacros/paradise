@@ -17,7 +17,7 @@ trait SymbolTableCompat { self =>
   lazy val build: ReificationSupport { val global: self.global.type } = new { val global: self.global.type = self.global } with ReificationSupport
 
   object symbolTable {
-    import global.{nameToNameOps => _, definitions => _, nme => _, lowerTermNames => _, _}
+    import global.{nameToNameOps => _, definitions => _, nme => _, tpnme => _, lowerTermNames => _, _}
     import definitions._
 
     type Name = global.Name
@@ -35,17 +35,52 @@ trait SymbolTableCompat { self =>
     implicit class RichTree(tree: Tree) {
       def nonEmpty = !tree.isEmpty
       def hasExistingSymbol = (tree.symbol ne null) && (tree.symbol ne NoSymbol)
-      def hasAttachment[T: ClassTag]: Boolean = tree.attachments.get[T].isDefined
+      def hasAttachment[T: ClassTag]: Boolean = tree.my_attachments.get[T].isDefined
+      def my_attachments: scala.reflect.macros.Attachments { type Pos = Position } = (tree: scala.reflect.macros.Universe#AttachableApi).attachments.asInstanceOf[scala.reflect.macros.Attachments { type Pos = Position }]
+      def my_updateAttachment[T: ClassTag](attachment: T): Tree = { (tree: scala.reflect.macros.Universe#AttachableApi).updateAttachment(attachment); tree }
+      def my_setPos(newpos: Position): Tree = {
+        val apiu = global.asInstanceOf[scala.reflect.macros.Universe]
+        tree.asInstanceOf[apiu.Tree].setPos(newpos.asInstanceOf[apiu.Position])
+        tree
+      }
+      // Belongs in TreeInfo but then I can't reach it from Printers.
+      private def isReferenceToScalaMember(Id: Name) = tree match {
+        case Ident(Id)                                          => true
+        case Select(Ident(nme.scala_), Id)                      => true
+        case Select(Select(Ident(nme.ROOTPKG), nme.scala_), Id) => true
+        case _                                                  => false
+      }
+      /** Is the tree Predef, scala.Predef, or _root_.scala.Predef?
+       */
+      def isReferenceToPredef = isReferenceToScalaMember(nme.Predef)
+      def isReferenceToAnyVal = isReferenceToScalaMember(tpnme.AnyVal)
     }
 
     implicit class RichSymbol(sym: Symbol) {
       def isDefaultGetter = sym.isTerm && (sym.name.toString contains nme.DEFAULT_GETTER_STRING)
       def setterName: TermName = sym.name.setterName
-      def hasVolatileType = sym.tpe.isVolatile && !sym.hasAnnotation(uncheckedStableClass)
+      def hasVolatileType = sym.tpe.isVolatile && !sym.my_hasAnnotation(uncheckedStableClass)
       def my_hasStableFlag = sym hasFlag STABLE
       def my_hasPackageFlag = sym hasFlag PACKAGE
       def my_isSynthetic = sym.isTerm && (sym.asTerm: scala.reflect.api.Symbols#TermSymbol).isSynthetic
       def my_isLazy = sym.isTerm && (sym.asTerm: scala.reflect.api.Symbols#TermSymbol).isLazy
+      def my_hasAnnotation(cls: Symbol) = sym.annotations.exists(_.tpe.typeSymbol == cls)
+      def my_isStable = sym.isTerm && (sym.asTerm: scala.reflect.api.Symbols#TermSymbol).isStable
+      def my_isTrait = sym.isClass && (sym.asClass: scala.reflect.api.Symbols#ClassSymbol).isTrait
+      def my_isTermMacro = (sym: scala.reflect.api.Symbols#Symbol).isMacro
+      def my_isVariable = sym.isTerm && (sym hasFlag MUTABLE) && !sym.isMethod
+    }
+
+    implicit class RichType(tpe: Type) {
+      def my_hasAnnotation(cls: Symbol) = tpe match {
+        case AnnotatedType(anns, _, _) => anns.exists(_.tpe.typeSymbol == cls)
+        case _ => false
+      }
+      def my_isImplicit: Boolean = tpe match {
+        case MethodType(p :: _, _) => p.isTerm && (p.asTerm: scala.reflect.api.Symbols#TermSymbol).isImplicit
+        case PolyType(_, restpe) => restpe.my_isImplicit
+        case _ => false
+      }
     }
 
     implicit class RichMirror(rb: RootsBase) {
@@ -384,6 +419,7 @@ trait SymbolTableCompat { self =>
     import global._
     type NameType = TypeName
     protected implicit def createNameType(name: String): TypeName = newTypeName(name)
+    lazy val AnyVal: NameType = "AnyVal"
     lazy val BYNAME_PARAM_CLASS_NAME: NameType = "<byname>"
     lazy val JAVA_REPEATED_PARAM_CLASS_NAME: NameType = "<repeated...>"
     lazy val Product: NameType = "Product"

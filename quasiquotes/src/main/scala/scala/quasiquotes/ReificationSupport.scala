@@ -34,7 +34,12 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   }
 
   def selectOverloadedMethod(owner: Symbol, name: String, index: Int): MethodSymbol = {
-    val result = owner.info.decl(newTermName(name)).alternatives(index)
+    val sym = owner.info.decl(newTermName(name))
+    val alternatives = sym match {
+      case sym if sym.isTerm => (sym.asTerm: scala.reflect.api.Symbols#TermSymbol).alternatives.asInstanceOf[List[Symbol]]
+      case _ => List(sym)
+    }
+    val result = alternatives(index)
     if (result ne NoSymbol) result.asMethod
     else throw new ScalaReflectionException("overloaded method %s #%d in %s not found".format(name, index, owner.fullName))
   }
@@ -935,7 +940,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   object SyntacticTermIdent {
     def apply(name: TermName, isBackquoted: Boolean): Ident = {
       val id = Ident(name)
-      if (isBackquoted) id updateAttachment BackquotedIdentifierAttachment
+      if (isBackquoted) id my_updateAttachment BackquotedIdentifierAttachment
       id
     }
     def unapply(id: Ident): Option[(TermName, Boolean)] = id.name match {

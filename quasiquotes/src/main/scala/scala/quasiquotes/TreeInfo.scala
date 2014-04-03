@@ -106,13 +106,13 @@ abstract class TreeInfo extends SymbolTableCompat {
    * by object definitions or by value definitions of non-volatile types (§3.6).
    */
   def isStableMemberOf(sym: Symbol, tree: Tree, allowVolatile: Boolean): Boolean = (
-    symOk(sym)       && (!sym.isTerm   || (sym.isStable && (allowVolatile || !sym.hasVolatileType))) &&
+    symOk(sym)       && (!sym.isTerm   || (sym.my_isStable && (allowVolatile || !sym.hasVolatileType))) &&
     typeOk(tree.tpe) && (allowVolatile || !hasVolatileType(tree)) && !definitions.isByNameParamType(tree.tpe)
   )
 
   private def isStableIdent(tree: Ident, allowVolatile: Boolean): Boolean = (
        symOk(tree.symbol)
-    && tree.symbol.isStable
+    && tree.symbol.my_isStable
     && !definitions.isByNameParamType(tree.tpe)
     && (allowVolatile || !tree.symbol.hasVolatileType) // TODO SPEC: not required by spec
   )
@@ -120,7 +120,7 @@ abstract class TreeInfo extends SymbolTableCompat {
   /** Is `tree`'s type volatile? (Ignored if its symbol has the @uncheckedStable annotation.)
    */
   def hasVolatileType(tree: Tree): Boolean =
-    symOk(tree.symbol) && tree.tpe.isVolatile && !tree.symbol.hasAnnotation(uncheckedStableClass)
+    symOk(tree.symbol) && tree.tpe.isVolatile && !tree.symbol.my_hasAnnotation(uncheckedStableClass)
 
   /** Is `tree` either a non-volatile type,
    *  or a path that does not include any of:
@@ -156,13 +156,17 @@ abstract class TreeInfo extends SymbolTableCompat {
        | Literal(_) =>
       true
     case Ident(_) =>
-      tree.symbol.isStable
+      tree.symbol.my_isStable
     // this case is mostly to allow expressions like -5 and +7, but any
     // member of an anyval should be safely pure
     case Select(Literal(const), name) =>
-      const.isAnyVal && (const.tpe.member(name) != NoSymbol)
+      val isAnyVal = const.value match {
+        case _: Byte | _: Short | _: Char | _: Int | _: Long | _: Float | _: Double | _: Boolean | _: Unit => true
+        case _                                                                                             => false
+      }
+      isAnyVal && (const.tpe.member(name) != NoSymbol)
     case Select(qual, _) =>
-      tree.symbol.isStable && isExprSafeToInline(qual)
+      tree.symbol.my_isStable && isExprSafeToInline(qual)
     case TypeApply(fn, _) =>
       isExprSafeToInline(fn)
     case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name.toString endsWith nme.REIFY_FREE_VALUE_SUFFIX.toString =>
@@ -252,9 +256,9 @@ abstract class TreeInfo extends SymbolTableCompat {
   /** Is symbol potentially a getter of a variable?
    */
   def mayBeVarGetter(sym: Symbol): Boolean = sym.info match {
-    case NullaryMethodType(_)              => sym.owner.isClass && !sym.isStable
-    case PolyType(_, NullaryMethodType(_)) => sym.owner.isClass && !sym.isStable
-    case mt @ MethodType(_, _)             => mt.isImplicit && sym.owner.isClass && !sym.isStable
+    case NullaryMethodType(_)              => sym.owner.isClass && !sym.my_isStable
+    case PolyType(_, NullaryMethodType(_)) => sym.owner.isClass && !sym.my_isStable
+    case mt @ MethodType(_, _)             => mt.my_isImplicit && sym.owner.isClass && !sym.my_isStable
     case _                                 => false
   }
 
@@ -262,7 +266,7 @@ abstract class TreeInfo extends SymbolTableCompat {
    */
   def isVariableOrGetter(tree: Tree) = {
     def sym       = tree.symbol
-    def isVar     = sym.isVariable
+    def isVar     = sym.my_isVariable
     def isGetter  = mayBeVarGetter(sym) && sym.owner.info.member(sym.setterName) != NoSymbol
 
     tree match {
@@ -522,7 +526,7 @@ abstract class TreeInfo extends SymbolTableCompat {
   def isLeftAssoc(operator: Name) = operator.toString.length > 0 && (operator.toString.last != ':')
 
   /** a Match(Typed(_, tpt), _) must be translated into a switch if isSwitchAnnotation(tpt.tpe) */
-  def isSwitchAnnotation(tpe: Type) = tpe hasAnnotation definitions.SwitchClass
+  def isSwitchAnnotation(tpe: Type) = tpe my_hasAnnotation definitions.SwitchClass
 
   /** can this type be a type pattern */
   def mayBeTypePat(tree: Tree): Boolean = tree match {
@@ -617,7 +621,7 @@ abstract class TreeInfo extends SymbolTableCompat {
   private def isSimpleThrowable(tp: Type): Boolean = tp match {
     case TypeRef(pre, sym, args) =>
       (pre == NoPrefix || pre.widen.typeSymbol.isStatic) &&
-      (sym isNonBottomSubClass ThrowableClass) &&  /* bq */ !sym.isTrait
+      (sym isNonBottomSubClass ThrowableClass) &&  /* bq */ !sym.my_isTrait
     case _ =>
       false
   }
@@ -683,7 +687,7 @@ abstract class TreeInfo extends SymbolTableCompat {
 
   def isTraitRef(tree: Tree): Boolean = {
     val sym = if (tree.tpe != null) tree.tpe.typeSymbol else null
-    ((sym ne null) && sym.initialize.isTrait)
+    ((sym ne null) && sym.initialize.my_isTrait)
   }
 
   /** Applications in Scala can have one of the following shapes:
@@ -824,7 +828,7 @@ abstract class TreeInfo extends SymbolTableCompat {
     // Top-level definition whose leading imports include Predef.
     def isLeadingPredefImport(defn: Tree): Boolean = defn match {
       case PackageDef(_, defs1) => defs1 exists isLeadingPredefImport
-      case Import(expr, _)      => isReferenceToPredef(expr)
+      case Import(expr, _)      => expr.isReferenceToPredef
       case _                    => false
     }
     // Compilation unit is class or object 'name' in package 'scala'
@@ -923,7 +927,7 @@ abstract class TreeInfo extends SymbolTableCompat {
 
   def isMacroApplication(tree: Tree): Boolean = !tree.isDef && {
     val sym = tree.symbol
-    sym != null && sym.isTermMacro && !sym.isErroneous
+    sym != null && sym.my_isTermMacro && !sym.isErroneous
   }
 
   def isMacroApplicationOrBlock(tree: Tree): Boolean = tree match {
