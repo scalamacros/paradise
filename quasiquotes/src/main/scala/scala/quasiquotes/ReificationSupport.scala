@@ -21,7 +21,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   }
 
   protected def select(owner: Symbol, name: Name): Symbol = {
-    val result = owner.info decl name
+    val result = owner.info declaration name
     if (result ne NoSymbol) result
     else {
       val mirror = mirrorThatLoaded(owner)
@@ -34,7 +34,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
   }
 
   def selectOverloadedMethod(owner: Symbol, name: String, index: Int): MethodSymbol = {
-    val sym = owner.info.decl(newTermName(name))
+    val sym = owner.info.declaration(newTermName(name))
     val alternatives = sym match {
       case sym if sym.isTerm => (sym.asTerm: scala.reflect.api.Symbols#TermSymbol).alternatives.asInstanceOf[List[Symbol]]
       case _ => List(sym)
@@ -57,10 +57,10 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
     global.newScopeWith(elems: _*)
 
   def setAnnotations[S <: Symbol](sym: S, annots: List[AnnotationInfo]): S =
-    sym.setAnnotations(annots)
+    sym.my_setAnnotations(annots).asInstanceOf[S]
 
   def setInfo[S <: Symbol](sym: S, tpe: Type): S =
-    sym.setInfo(tpe)
+    sym.my_setInfo(tpe).asInstanceOf[S]
 
   def mkThis(sym: Symbol): Tree = global.This(sym)
 
@@ -98,7 +98,7 @@ abstract class ReificationSupport extends SymbolTableCompat { self =>
 
   def BoundedWildcardType(bounds: TypeBounds): BoundedWildcardType = global.BoundedWildcardType(bounds)
 
-  def thisPrefix(sym: Symbol): Type = sym.thisPrefix
+  def thisPrefix(sym: Symbol): Type = sym.my_thisPrefix
 
   def setType[T <: Tree](tree: T, tpe: Type): T = { tree.setType(tpe); tree }
 

@@ -69,6 +69,27 @@ trait SymbolTableCompat { self =>
       def my_isTrait = sym.isClass && (sym.asClass: scala.reflect.api.Symbols#ClassSymbol).isTrait
       def my_isTermMacro = (sym: scala.reflect.api.Symbols#Symbol).isMacro
       def my_isVariable = sym.isTerm && (sym hasFlag MUTABLE) && !sym.isMethod
+      def my_thisPrefix = {
+        if (sym.isClass) (sym.asClass: scala.reflect.api.Symbols#ClassSymbol).thisPrefix.asInstanceOf[Type]
+        else NoPrefix
+      }
+      def my_isError = sym hasFlag IS_ERROR
+      def my_isDefinedInPackage = sym.effectiveOwner.isPackageClass
+      def my_isEffectiveRoot = sym == rootMirror.RootClass || sym == rootMirror.EmptyPackageClass
+      def my_isRoot = sym == rootMirror.RootClass
+      def my_sourceModule = if (sym.isClass) (sym.asClass: scala.reflect.api.Symbols#ClassSymbol).module.asInstanceOf[Symbol] else NoSymbol
+      def my_moduleClass = if (sym.isModule) (sym.asModule: scala.reflect.api.Symbols#ModuleSymbol).moduleClass.asInstanceOf[Symbol] else NoSymbol
+      def my_isEmptyPackage = sym == rootMirror.EmptyPackage
+      def my_setInfo(tpe: Type) = {
+        val apiu = global.asInstanceOf[scala.reflect.macros.Universe]
+        sym.asInstanceOf[apiu.Symbol].setTypeSignature(tpe.asInstanceOf[apiu.Type])
+        sym
+      }
+      def my_setAnnotations(anns: List[Annotation]) = {
+        val apiu = global.asInstanceOf[scala.reflect.macros.Universe]
+        sym.asInstanceOf[apiu.Symbol].setAnnotations(anns.asInstanceOf[List[apiu.Annotation]]: _*)
+        sym
+      }
     }
 
     implicit class RichType(tpe: Type) {
@@ -89,8 +110,8 @@ trait SymbolTableCompat { self =>
         // package object iself, but it also could be any superclass of the package
         // object.  In the latter case, we must go through the qualifier's info
         // to obtain the right symbol.
-        if (sym.owner.isModuleClass) sym.owner.sourceModule // fast path, if the member is owned by a module class, that must be linked to the package object
-        else pre member nme.PACKAGE                         // otherwise we have to findMember
+        if (sym.owner.isModuleClass) sym.owner.my_sourceModule // fast path, if the member is owned by a module class, that must be linked to the package object
+        else pre member nme.PACKAGE                            // otherwise we have to findMember
       }
     }
 
@@ -280,10 +301,11 @@ trait SymbolTableCompat { self =>
 
   object definitions {
     import global._
+    import symbolTable.RichSymbol
     lazy val AbstractFunctionClass = 0.to(22).map(i => rootMirror.staticClass("scala.AbstractFunction" + i)).toArray
     lazy val AbstractPartialFunctionClass = rootMirror.staticClass("scala.runtime.AbstractPartialFunction")
-    lazy val Any_asInstanceOf = typeOf[Any].decl(newTermName("asInstanceOf"))
-    lazy val Any_isInstanceOf = typeOf[Any].decl(newTermName("isInstanceOf"))
+    lazy val Any_asInstanceOf = typeOf[Any].declaration(newTermName("asInstanceOf"))
+    lazy val Any_isInstanceOf = typeOf[Any].declaration(newTermName("isInstanceOf"))
     def isByNameParamType(tp: Type) = tp.typeSymbol == global.definitions.ByNameParamClass
     def isCastSymbol(sym: Symbol) = sym == Any_asInstanceOf || sym == Object_asInstanceOf
     def isScalaRepeatedParamType(tp: Type) = tp.typeSymbol == global.definitions.RepeatedParamClass
@@ -299,17 +321,17 @@ trait SymbolTableCompat { self =>
     lazy val Object_asInstanceOf = typeOf[Object].member(newTermName("asInstanceOf"))
     lazy val Object_isInstanceOf = typeOf[Object].member(newTermName("isInstanceOf"))
     lazy val PartialFunctionClass = rootMirror.staticClass("scala.PartialFunction")
-    lazy val Predef_??? = typeOf[Predef.type].decl(newTermName("???").encodedName)
-    lazy val ReflectRuntimeUniverse = typeOf[scala.reflect.runtime.`package`.type].decl(newTermName("universe"))
+    lazy val Predef_??? = typeOf[Predef.type].declaration(newTermName("???").encodedName)
+    lazy val ReflectRuntimeUniverse = typeOf[scala.reflect.runtime.`package`.type].declaration(newTermName("universe"))
     lazy val ScalaPackage = global.definitions.ScalaPackage
-    lazy val SeqModule = typeOf[scala.collection.Seq.type].typeSymbol.sourceModule
+    lazy val SeqModule = typeOf[scala.collection.Seq.type].typeSymbol.my_sourceModule
     lazy val SerializableClass = typeOf[scala.Serializable].typeSymbol
     lazy val SwitchClass = typeOf[scala.annotation.switch].typeSymbol
     lazy val ThrowableClass = typeOf[java.lang.Throwable].typeSymbol
     lazy val TupleClass = global.definitions.TupleClass
     lazy val uncheckedStableClass = typeOf[scala.annotation.unchecked.uncheckedStable].typeSymbol
-    lazy val Boolean_and = BooleanClass.info.decl(newTermName("&&").encodedName)
-    lazy val Boolean_or = BooleanClass.info.decl(newTermName("||").encodedName)
+    lazy val Boolean_and = BooleanClass.info.declaration(newTermName("&&").encodedName)
+    lazy val Boolean_or = BooleanClass.info.declaration(newTermName("||").encodedName)
     lazy val BooleanClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).BooleanClass.asInstanceOf[Symbol]
     lazy val ByteClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).ByteClass.asInstanceOf[Symbol]
     lazy val CharClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).CharClass.asInstanceOf[Symbol]

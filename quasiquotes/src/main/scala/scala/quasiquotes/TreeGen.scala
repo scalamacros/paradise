@@ -89,15 +89,15 @@ abstract class TreeGen extends SymbolTableCompat {
       case NoPrefix =>
         EmptyTree
       case ThisType(clazz) =>
-        if (clazz.isEffectiveRoot) EmptyTree
+        if (clazz.my_isEffectiveRoot) EmptyTree
         else mkAttributedThis(clazz)
       case SingleType(pre, sym) =>
         mkApplyIfNeeded(mkAttributedStableRef(pre, sym))
       case TypeRef(pre, sym, args) =>
-        if (sym.isRoot) {
+        if (sym.my_isRoot) {
           mkAttributedThis(sym)
         } else if (sym.isModuleClass) {
-          mkApplyIfNeeded(mkAttributedRef(pre, sym.sourceModule))
+          mkApplyIfNeeded(mkAttributedRef(pre, sym.my_sourceModule))
         } else if (sym.isModule || sym.isClass) {
           abort(failMessage)
         } else if (sym.isType) {
@@ -136,18 +136,21 @@ abstract class TreeGen extends SymbolTableCompat {
   def mkAttributedRef(pre: Type, sym: Symbol): RefTree = {
     val qual = mkAttributedQualifier(pre)
     qual match {
-      case EmptyTree                                  => mkAttributedIdent(sym)
-      case This(clazz) if qual.symbol.isEffectiveRoot => mkAttributedIdent(sym)
-      case _                                          => mkAttributedSelect(qual, sym)
+      case EmptyTree                                     => mkAttributedIdent(sym)
+      case This(clazz) if qual.symbol.my_isEffectiveRoot => mkAttributedIdent(sym)
+      case _                                             => mkAttributedSelect(qual, sym)
     }
   }
 
   /** Builds a reference to given symbol. */
   def mkAttributedRef(sym: Symbol): RefTree =
-    if (sym.owner.isClass) mkAttributedRef(sym.owner.thisType, sym)
+    if (sym.owner.isClass) mkAttributedRef(sym.owner.my_thisPrefix, sym)
     else mkAttributedIdent(sym)
 
-  def mkUnattributedRef(sym: Symbol): RefTree = mkUnattributedRef(sym.fullNameAsName('.'))
+  def mkUnattributedRef(sym: Symbol): RefTree = mkUnattributedRef({
+    val s = sym.fullName
+    if (sym.isTerm) newTermName(s) else newTypeName(s)
+  })
 
   def mkUnattributedRef(fullName: Name): RefTree = {
     val hd :: tl = nme.segments(fullName.toString, assumeTerm = fullName.isTermName)
@@ -165,7 +168,7 @@ abstract class TreeGen extends SymbolTableCompat {
     if (!treeInfo.admitsTypeSelection(tree)) NoType
     else tree match {
       case This(_)         => ThisType(tree.symbol)
-      case Ident(_)        => singleType(tree.symbol.owner.thisType, tree.symbol)
+      case Ident(_)        => singleType(tree.symbol.owner.my_thisPrefix, tree.symbol)
       case Select(qual, _) => singleType(qual.tpe, tree.symbol)
       case _               => NoType
     }
@@ -179,14 +182,14 @@ abstract class TreeGen extends SymbolTableCompat {
     stabilize(mkAttributedRef(sym))
 
   def mkAttributedThis(sym: Symbol): This =
-    This(sym.name.toTypeName) setSymbol sym setType sym.thisType
+    This(sym.name.toTypeName) setSymbol sym setType sym.my_thisPrefix
 
   def mkAttributedIdent(sym: Symbol): RefTree =
     Ident(sym.name) setSymbol sym setType sym.tpeHK
 
   def mkAttributedSelect(qual: Tree, sym: Symbol): RefTree = {
     // Tests involving the repl fail without the .isEmptyPackage condition.
-    if (qual.symbol != null && (qual.symbol.isEffectiveRoot || qual.symbol.isEmptyPackage))
+    if (qual.symbol != null && (qual.symbol.my_isEffectiveRoot || qual.symbol.my_isEmptyPackage))
       mkAttributedIdent(sym)
     else {
       // Have to recognize anytime a selection is made on a package
@@ -202,7 +205,7 @@ abstract class TreeGen extends SymbolTableCompat {
       val needsPackageQualifier = (
            (sym ne null)
         && qualsym.my_hasPackageFlag
-        && !(sym.isDefinedInPackage || sym.moduleClass.isDefinedInPackage) // SI-7817 work around strangeness in post-flatten `Symbol#owner`
+        && !(sym.my_isDefinedInPackage || sym.my_moduleClass.my_isDefinedInPackage) // SI-7817 work around strangeness in post-flatten `Symbol#owner`
       )
       val pkgQualifier =
         if (needsPackageQualifier) {
@@ -318,7 +321,7 @@ abstract class TreeGen extends SymbolTableCompat {
 
   def mkRuntimeUniverseRef: Tree = {
     assert(ReflectRuntimeUniverse != NoSymbol)
-    mkAttributedRef(ReflectRuntimeUniverse) setType singleType(ReflectRuntimeUniverse.owner.thisPrefix, ReflectRuntimeUniverse)
+    mkAttributedRef(ReflectRuntimeUniverse) setType singleType(ReflectRuntimeUniverse.owner.my_thisPrefix, ReflectRuntimeUniverse)
   }
 
   def mkSeqApply(arg: Tree): Apply = {

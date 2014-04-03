@@ -97,7 +97,7 @@ abstract class TreeInfo extends SymbolTableCompat {
       case _               => false
     }
 
-  private def symOk(sym: Symbol) = sym != null && !sym.isError && sym != NoSymbol
+  private def symOk(sym: Symbol) = sym != null && !sym.my_isError && sym != NoSymbol
   private def typeOk(tp: Type)   =  tp != null && ! tp.isError
 
   /** Assuming `sym` is a member of `tree`, is it a "stable member"?
@@ -687,7 +687,7 @@ abstract class TreeInfo extends SymbolTableCompat {
 
   def isTraitRef(tree: Tree): Boolean = {
     val sym = if (tree.tpe != null) tree.tpe.typeSymbol else null
-    ((sym ne null) && sym.initialize.my_isTrait)
+    ((sym ne null) && { sym.typeSignature; sym.my_isTrait })
   }
 
   /** Applications in Scala can have one of the following shapes:
