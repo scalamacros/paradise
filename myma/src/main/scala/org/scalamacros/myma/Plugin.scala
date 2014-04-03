@@ -8,7 +8,7 @@ class Plugin(val global: Global) extends NscPlugin {
 
   val name = "myma"
   val description = "My migration analyzer"
-  val components = List[NscPluginComponent](LogicalComponent, PhysicalComponent)
+  val components = if (global.forInteractive || global.forScaladoc) Nil else List[NscPluginComponent](LogicalComponent, PhysicalComponent)
 
   private object LogicalComponent extends NscPluginComponent {
     import global._
