@@ -354,7 +354,7 @@ abstract class TreeGen extends SymbolTableCompat {
     var vparamss1 = vparamss.map { _.map { vd =>
       atPos(vd.pos.focus) {
         val mods = Modifiers(vd.mods.flags & (IMPLICIT | DEFAULTPARAM | BYNAMEPARAM) | PARAM | PARAMACCESSOR)
-        ValDef(mods withAnnotations vd.mods.annotations, vd.name, vd.tpt.duplicate, vd.rhs.duplicate)
+        ValDef(mods my_withAnnotations vd.mods.annotations, vd.name, vd.tpt.duplicate, vd.rhs.duplicate)
       }
     } }
     val (edefs, rest) = body span treeInfo.isEarlyDef
@@ -369,7 +369,7 @@ abstract class TreeGen extends SymbolTableCompat {
         rhs = EmptyTree
       )
     }
-    val lvdefs = evdefs collect { case vdef: ValDef => copyValDef(vdef)(mods = vdef.mods | PRESUPER) }
+    val lvdefs = evdefs collect { case vdef: ValDef => copyValDef(vdef)(mods = vdef.mods my_| PRESUPER) }
 
     val (parents1, argss) =
       if (constrMods.hasFlag(TRAIT)) (parents, Nil)
@@ -402,7 +402,7 @@ abstract class TreeGen extends SymbolTableCompat {
     // constr foreach (ensureNonOverlapping(_, parents1 ::: gvdefs, focus=false))
 
     // Field definitions for the class - remove defaults.
-    val fieldDefs = vparamss.flatten map (vd => copyValDef(vd)(mods = vd.mods &~ DEFAULTPARAM, rhs = EmptyTree))
+    val fieldDefs = vparamss.flatten map (vd => copyValDef(vd)(mods = vd.mods my_&~ DEFAULTPARAM, rhs = EmptyTree))
 
     Template(parents1, self, gvdefs ::: fieldDefs ::: constr ++: etdefs ::: rest)
   }
@@ -414,7 +414,7 @@ abstract class TreeGen extends SymbolTableCompat {
 
   def mkClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], templ: Template): ClassDef = {
     val isInterface = mods.isTrait && (templ.body forall treeInfo.isInterfaceMember)
-    val mods1 = if (isInterface) (mods | Flags.INTERFACE) else mods
+    val mods1 = if (isInterface) (mods my_| Flags.INTERFACE) else mods
     ClassDef(mods1, name, tparams, templ)
   }
 

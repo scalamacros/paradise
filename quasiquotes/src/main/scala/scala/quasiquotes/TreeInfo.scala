@@ -440,7 +440,7 @@ abstract class TreeInfo extends SymbolTableCompat {
         } map { dd =>
           val DefDef(dmods, dname, _, _, _, drhs) = dd
           // get access flags from DefDef
-          val vdMods = (vmods &~ Flags.AccessFlags) | (dmods & Flags.AccessFlags).flags
+          val vdMods = (vmods my_&~ Flags.AccessFlags) my_| (dmods my_& Flags.AccessFlags).flags
           // for most cases lazy body should be taken from accessor DefDef
           val vdRhs = if (vmods.isLazy) lazyValDefRhs(drhs) else vrhs
           copyValDef(vd)(mods = vdMods, name = dname, rhs = vdRhs)
@@ -448,7 +448,7 @@ abstract class TreeInfo extends SymbolTableCompat {
       // for abstract and some lazy val/vars
       case dd @ DefDef(mods, name, _, _, tpt, rhs) if mods.hasAccessorFlag =>
         // transform getter mods to field
-        val vdMods = (if (!mods.hasStableFlag) mods | Flags.MUTABLE else mods &~ Flags.STABLE) &~ Flags.ACCESSOR
+        val vdMods = (if (!mods.hasStableFlag) mods my_| Flags.MUTABLE else mods my_&~ Flags.STABLE) my_&~ Flags.ACCESSOR
         ValDef(vdMods, name.toTermName, tpt, rhs)
       case tr => tr
     }

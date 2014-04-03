@@ -55,6 +55,29 @@ trait SymbolTableCompat { self =>
       }
     }
 
+    implicit class RichModifiers(mods: Modifiers) {
+      def my_& (flag: Long): Modifiers = {
+        val flags1 = mods.flags & flag
+        if (flags1 == mods.flags) mods
+        else Modifiers(flags1, mods.privateWithin, mods.annotations) // setPositions mods.positions
+      }
+      def my_&~ (flag: Long): Modifiers = {
+        val flags1 = mods.flags & (~flag)
+        if (flags1 == mods.flags) mods
+        else Modifiers(flags1, mods.privateWithin, mods.annotations) // setPositions mods.positions
+      }
+      def my_| (flag: Long): Modifiers = {
+        val flags1 = mods.flags | flag
+        if (flags1 == mods.flags) mods
+        else Modifiers(flags1, mods.privateWithin, mods.annotations) // setPositions mods.positions
+      }
+      def my_withAnnotations(annots: List[Tree]) = {
+        if (annots.isEmpty) mods
+        else Modifiers(mods.flags, mods.privateWithin, mods.annotations ::: annots) // setPositions mods.positions
+      }
+      def isLocalToThis = mods hasFlag LOCAL
+    }
+
     def copyValDef(tree: Tree)(
       mods: Modifiers = null,
       name: Name      = null,
@@ -198,10 +221,6 @@ trait SymbolTableCompat { self =>
       def offset(source: SourceFile, point: Int): Position                            = validate(new OffsetPosition(source, point))
       def range(source: SourceFile, start: Int, point: Int, end: Int): Position       = validate(new RangePosition(source, start, point, end))
       def transparent(source: SourceFile, start: Int, point: Int, end: Int): Position = validate(new TransparentPosition(source, start, point, end))
-    }
-
-    implicit class RichModifiers(mods: Modifiers) {
-      def isLocalToThis = mods hasFlag LOCAL
     }
 
     def duplicateAndKeepPositions(tree: Tree) = {

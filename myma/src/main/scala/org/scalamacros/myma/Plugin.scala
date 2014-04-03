@@ -47,7 +47,7 @@ class Plugin(val global: Global) extends NscPlugin {
           trulyInternal
         }
         val unauthorized = deps.filterKeys(dep => !whitelist.contains(dep.fullName))
-        unauthorized.foreach{ case (dep, usages) => usages.foreach(usage => unit.error(usage.pos, s"Usage of unauthorized API: ${dep.fullName}")) }
+        unauthorized.foreach{ case (dep, usages) => usages.foreach(usage => unit.error(usage.pos, s"Usage of unauthorized API: ${scala.reflect.NameTransformer.decode(dep.fullName)}")) }
       }
     }
   }
