@@ -7,7 +7,7 @@ import scala.reflect.internal.SymbolTable
 abstract class ReificationSupport extends SymbolTableCompat { self =>
   val global: SymbolTable
 
-  import global._
+  import global.{definitions => _, _}
   import symbolTable._
   import definitions._
 

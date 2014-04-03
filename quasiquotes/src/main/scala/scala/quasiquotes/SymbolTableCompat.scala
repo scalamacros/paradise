@@ -16,7 +16,7 @@ trait SymbolTableCompat { self =>
   lazy val build: ReificationSupport { val global: self.global.type } = new { val global: self.global.type = self.global } with ReificationSupport
 
   object symbolTable {
-    import global.{nameToNameOps => _, _}
+    import global.{nameToNameOps => _, definitions => _, _}
     import definitions._
 
     type Name = global.Name
@@ -187,5 +187,49 @@ trait SymbolTableCompat { self =>
       val duplicator = new Transformer { override val treeCopy = newStrictTreeCopier }
       duplicator.transform(tree)
     }
+  }
+
+  object definitions {
+    import global._
+    lazy val AbstractFunctionClass = 0.to(22).map(i => rootMirror.staticClass("scala.AbstractFunction" + i)).toArray
+    lazy val AbstractPartialFunctionClass = rootMirror.staticClass("scala.runtime.AbstractPartialFunction")
+    lazy val Any_asInstanceOf = typeOf[Any].decl(newTermName("asInstanceOf"))
+    lazy val Any_isInstanceOf = typeOf[Any].decl(newTermName("isInstanceOf"))
+    def isByNameParamType(tp: Type) = tp.typeSymbol == global.definitions.ByNameParamClass
+    def isCastSymbol(sym: Symbol) = sym == Any_asInstanceOf || sym == Object_asInstanceOf
+    def isScalaRepeatedParamType(tp: Type) = tp.typeSymbol == global.definitions.RepeatedParamClass
+    def isJavaRepeatedParamType(tp: Type) = tp.typeSymbol == global.definitions.JavaRepeatedParamClass
+    def isRepeatedParamType(tp: Type) = isScalaRepeatedParamType(tp) || isJavaRepeatedParamType(tp)
+    def isVarArgsList(params: Seq[Symbol]) = params.nonEmpty && isRepeatedParamType(params.last.tpe)
+    lazy val FunctionClass = global.definitions.FunctionClass
+    lazy val MaxFunctionArity = 22
+    lazy val MaxTupleArity = 22
+    lazy val NilModule = global.definitions.NilModule
+    lazy val NothingClass = global.definitions.NothingClass
+    lazy val NothingTpe = global.definitions.NothingTpe
+    lazy val Object_asInstanceOf = typeOf[Object].member(newTermName("asInstanceOf"))
+    lazy val Object_isInstanceOf = typeOf[Object].member(newTermName("isInstanceOf"))
+    lazy val PartialFunctionClass = rootMirror.staticClass("scala.PartialFunction")
+    lazy val Predef_??? = typeOf[Predef.type].decl(newTermName("???").encodedName)
+    lazy val ReflectRuntimeUniverse = typeOf[scala.reflect.runtime.`package`.type].decl(newTermName("universe"))
+    lazy val ScalaPackage = global.definitions.ScalaPackage
+    lazy val SeqModule = typeOf[scala.collection.Seq.type].typeSymbol.sourceModule
+    lazy val SerializableClass = typeOf[scala.Serializable].typeSymbol
+    lazy val SwitchClass = typeOf[scala.annotation.switch].typeSymbol
+    lazy val ThrowableClass = typeOf[java.lang.Throwable].typeSymbol
+    lazy val TupleClass = global.definitions.TupleClass
+    lazy val uncheckedStableClass = typeOf[scala.annotation.unchecked.uncheckedStable].typeSymbol
+    lazy val Boolean_and = BooleanClass.info.decl(newTermName("&&").encodedName)
+    lazy val Boolean_or = BooleanClass.info.decl(newTermName("||").encodedName)
+    lazy val BooleanClass = global.definitions.BooleanClass
+    lazy val ByteClass = global.definitions.ByteClass
+    lazy val CharClass = global.definitions.CharClass
+    lazy val DoubleClass = global.definitions.DoubleClass
+    lazy val FloatClass = global.definitions.FloatClass
+    lazy val IntClass = global.definitions.IntClass
+    lazy val LongClass = global.definitions.LongClass
+    lazy val ShortClass = global.definitions.ShortClass
+    lazy val UnitClass = global.definitions.UnitClass
+    lazy val UnitTpe = global.definitions.UnitTpe
   }
 }

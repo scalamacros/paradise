@@ -32,7 +32,13 @@ class Plugin(val global: Global) extends NscPlugin {
           def isTrulyInternal(sym: Symbol): Boolean = {
             val doesntComeFromApi = !sym.allOverriddenSymbols.exists(sym => sym.fullName.startsWith("scala.reflect.api"))
             val doesntComeFromMacros = !sym.allOverriddenSymbols.exists(sym => sym.fullName.startsWith("scala.reflect.macros"))
-            doesntComeFromApi && doesntComeFromMacros
+            val doesntComeFromStdDefs = {
+              val comesFromValueClassDefs = sym.owner.name == newTypeName("ValueClassDefinitions")
+              val isOneOfStdDefs = typeOf[scala.reflect.api.StandardDefinitions].decl(newTypeName("DefinitionsApi")).info.decls.map(_.name).toSet.contains(sym.name)
+              val isOneOfStdTypes = typeOf[scala.reflect.api.StandardDefinitions].decl(newTypeName("StandardTypes")).info.decls.map(_.name).toSet.contains(sym.name)
+              !(comesFromValueClassDefs && (isOneOfStdDefs || isOneOfStdTypes))
+            }
+            doesntComeFromApi && doesntComeFromMacros && doesntComeFromStdDefs
           }
           val deps = unit.body.collect{ case tree if tree.hasSymbol => (tree.symbol, tree) }.toMap
           val relevant = deps.filterKeys(sym => !sym.isPackage && !sym.isModule)

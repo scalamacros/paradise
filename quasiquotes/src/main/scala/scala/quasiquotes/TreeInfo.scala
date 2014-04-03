@@ -9,7 +9,7 @@ abstract class TreeInfo extends SymbolTableCompat {
 
   import global._
   import symbolTable._
-  import definitions.{ isTupleSymbol, isVarArgsList, isCastSymbol, ThrowableClass, TupleClass, uncheckedStableClass }
+  import definitions.{ isVarArgsList, isCastSymbol, ThrowableClass, TupleClass, uncheckedStableClass }
 
   /* Does not seem to be used. Not sure what it does anyway.
   def isOwnerDefinition(tree: Tree): Boolean = tree match {
