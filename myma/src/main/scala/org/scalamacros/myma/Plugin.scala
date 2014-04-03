@@ -8,14 +8,14 @@ class Plugin(val global: Global) extends NscPlugin {
 
   val name = "myma"
   val description = "My migration analyzer"
-  val components = List[NscPluginComponent](PluginComponent)
+  val components = List[NscPluginComponent](LogicalComponent, PhysicalComponent)
 
-  private object PluginComponent extends NscPluginComponent {
+  private object LogicalComponent extends NscPluginComponent {
     import global._
     val global = Plugin.this.global
 
     override val runsAfter = List("typer")
-    val phaseName = "myma"
+    val phaseName = "myma-logical"
 
     def newPhase(prev: Phase) = new StdPhase(prev) {
       def apply(unit: CompilationUnit) {
@@ -41,6 +41,30 @@ class Plugin(val global: Global) extends NscPlugin {
           trulyInternal
         }
         val unauthorized = deps.filterKeys(dep => !whitelist.contains(dep.fullName))
+        unauthorized.foreach{ case (dep, usages) => usages.foreach(usage => unit.error(usage.pos, s"Usage of unauthorized API: ${scala.reflect.NameTransformer.decode(dep.fullName)}")) }
+      }
+    }
+  }
+
+  private object PhysicalComponent extends NscPluginComponent {
+    import global._
+    val global = Plugin.this.global
+
+    override val runsAfter = List("cleanup")
+    val phaseName = "myma-physical"
+
+    def newPhase(prev: Phase) = new StdPhase(prev) {
+      def apply(unit: CompilationUnit) {
+        lazy val entirelist: Set[String] = {
+          val resourcePath = System.getProperty("myma.entirelist.conf")
+          if (resourcePath == null) abort("couldn't load entirelist.conf")
+          io.Source.fromFile(resourcePath).getLines.toSet
+        }
+        lazy val deps: Map[Symbol, List[Tree]] = {
+          val deps = unit.body.collect{ case tree if tree.hasSymbol => (tree.symbol, tree) }.groupBy(_._1).mapValues(v => v.map(_._2))
+          deps.filterKeys(_.fullName.startsWith("scala.reflect.internal."))
+        }
+        val unauthorized = deps.filterKeys(dep => !entirelist.contains(dep.fullName))
         unauthorized.foreach{ case (dep, usages) => usages.foreach(usage => unit.error(usage.pos, s"Usage of unauthorized API: ${scala.reflect.NameTransformer.decode(dep.fullName)}")) }
       }
     }

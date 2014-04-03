@@ -125,6 +125,7 @@ object build extends Build {
     javacOptions ++= Seq("-target", "1.6", "-source", "1.6"),
     scalacOptions in Compile <++= (Keys.`package` in (myma, Compile), resourceDirectory in (myma, Compile)) map { (jar: File, resources: File) =>
       System.setProperty("myma.whitelist.conf", resources.getAbsolutePath + "/whitelist.conf")
+      System.setProperty("myma.entirelist.conf", resources.getAbsolutePath + "/entirelist.conf")
       val addPlugin = "-Xplugin:" + jar.getAbsolutePath
       val dummy = "-Jdummy=" + jar.lastModified
       Seq(addPlugin, dummy)
