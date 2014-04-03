@@ -13,7 +13,7 @@ abstract class Quasiquotes extends Parsers
   val global: c.universe.type = c.universe
   import c.universe._
   import paradiseDefinitions._
-  import compat.build._
+  import compat.build.{nme => _, _}
 
   def debug(msg: => String): Unit =
     if (settings.Yquasiquotedebug.value) println(msg)
