@@ -14,6 +14,7 @@ object build extends Build {
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
     publishMavenStyle := true,
+    publishArtifact in Compile := false,
     publishArtifact in Test := false,
     scalacOptions ++= Seq("-deprecation", "-feature", "-optimise"),
     parallelExecution in Test := false, // hello, reflection sync!!
@@ -101,6 +102,17 @@ object build extends Build {
     publish := {}
   ) aggregate (quasiquotes, plugin)
 
+  lazy val myma = Project(
+    id   = "myma",
+    base = file("myma")
+  ) settings (
+    sharedSettings : _*
+  ) settings (
+    resourceDirectory in Compile <<= baseDirectory(_ / "src" / "main" / "scala" / "org" / "scalamacros" / "myma" / "embedded"),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _ % "provided")
+  )
+
   lazy val quasiquotes = Project(
     id   = "quasiquotes",
     base = file("quasiquotes")
@@ -109,7 +121,13 @@ object build extends Build {
   ) settings (
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     addCompilerPlugin("org.scalamacros" % "paradise_2.10.4" % "2.0.0-M5"),
-    javacOptions ++= Seq("-target", "1.6")
+    javacOptions ++= Seq("-target", "1.6", "-source", "1.6"),
+    scalacOptions in Compile <++= (Keys.`package` in (myma, Compile), resourceDirectory in (myma, Compile)) map { (jar: File, resources: File) =>
+      System.setProperty("myma.whitelist.conf", resources.getAbsolutePath + "/whitelist.conf")
+      val addPlugin = "-Xplugin:" + jar.getAbsolutePath
+      val dummy = "-Jdummy=" + jar.lastModified
+      Seq(addPlugin, dummy)
+    }
   )
 
   lazy val plugin = Project(

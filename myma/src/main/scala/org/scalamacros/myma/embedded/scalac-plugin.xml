@@ -1,0 +1,4 @@
+<plugin>
+  <name>myma-plugin</name>
+  <classname>org.scalamacros.myma.Plugin</classname>
+</plugin>
