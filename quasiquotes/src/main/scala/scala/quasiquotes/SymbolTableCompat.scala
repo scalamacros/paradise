@@ -262,16 +262,16 @@ trait SymbolTableCompat { self =>
     lazy val uncheckedStableClass = typeOf[scala.annotation.unchecked.uncheckedStable].typeSymbol
     lazy val Boolean_and = BooleanClass.info.decl(newTermName("&&").encodedName)
     lazy val Boolean_or = BooleanClass.info.decl(newTermName("||").encodedName)
-    lazy val BooleanClass = global.definitions.BooleanClass
-    lazy val ByteClass = global.definitions.ByteClass
-    lazy val CharClass = global.definitions.CharClass
-    lazy val DoubleClass = global.definitions.DoubleClass
-    lazy val FloatClass = global.definitions.FloatClass
-    lazy val IntClass = global.definitions.IntClass
-    lazy val LongClass = global.definitions.LongClass
-    lazy val ShortClass = global.definitions.ShortClass
-    lazy val UnitClass = global.definitions.UnitClass
-    lazy val UnitTpe = global.definitions.UnitTpe
+    lazy val BooleanClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).BooleanClass.asInstanceOf[Symbol]
+    lazy val ByteClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).ByteClass.asInstanceOf[Symbol]
+    lazy val CharClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).CharClass.asInstanceOf[Symbol]
+    lazy val DoubleClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).DoubleClass.asInstanceOf[Symbol]
+    lazy val FloatClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).FloatClass.asInstanceOf[Symbol]
+    lazy val IntClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).IntClass.asInstanceOf[Symbol]
+    lazy val LongClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).LongClass.asInstanceOf[Symbol]
+    lazy val ShortClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).ShortClass.asInstanceOf[Symbol]
+    lazy val UnitClass = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).UnitClass.asInstanceOf[Symbol]
+    lazy val UnitTpe = (global.definitions: scala.reflect.api.StandardDefinitions#DefinitionsApi).UnitTpe.asInstanceOf[Type]
   }
 
   trait CommonNames {
