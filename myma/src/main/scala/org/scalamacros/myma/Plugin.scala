@@ -34,8 +34,8 @@ class Plugin(val global: Global) extends NscPlugin {
             val doesntComeFromMacros = !sym.allOverriddenSymbols.exists(sym => sym.fullName.startsWith("scala.reflect.macros"))
             doesntComeFromApi && doesntComeFromMacros
           }
-          val deps = unit.body.collect{ case tree if tree.hasSymbol => (tree.symbol, tree) }.groupBy(_._1).mapValues(v => v.map(_._2))
-          val relevant = deps.filterKeys(sym => !sym.isPackage && !sym.isModule)
+          val deps = unit.body.collect{ case tree => (tree.symbol, tree) }.groupBy(_._1).mapValues(v => v.map(_._2))
+          val relevant = deps.filterKeys(sym => sym != null && sym != NoSymbol && !sym.isPackage)
           val internal = relevant.filterKeys(_.fullName.startsWith("scala.reflect.internal."))
           val trulyInternal = internal.filterKeys(isTrulyInternal)
           trulyInternal
