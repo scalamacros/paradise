@@ -164,4 +164,14 @@ object LiftableProps extends QuasiquoteProperties("liftable") {
     val right3: Either[Int, Int] = Right(1)
     assert(q"$right3" ≈ q"scala.util.Right(1)")
   }
+
+  property("lift xml comment") = test {
+    def Liftable[T](f: T => Tree): Liftable[T] = {
+      new Liftable[T] { def apply(value: T): Tree = f(value) }
+    }
+    implicit val liftXmlComment = Liftable[xml.Comment] { comment =>
+      q"new _root_.scala.xml.Comment(${comment.commentText})"
+    }
+    assert(q"${xml.Comment("foo")}" ≈ q"<!--foo-->")
+  }
 }
