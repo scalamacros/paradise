@@ -171,7 +171,13 @@ trait Namers {
 
     def finishSymbolNotExpandee(tree: Tree) {
       val sym = tree.symbol
-      tree match {
+      def savingLock[T](op: => T): T = {
+        val wasLocked = sym.hasFlag(LOCKED)
+        val result = op
+        if (wasLocked) sym.setFlag(LOCKED)
+        result
+      }
+      savingLock(tree match {
         case tree @ PackageDef(_, _) =>
           newNamer(context.make(tree, sym.moduleClass, sym.info.decls)) enterSyms tree.stats
         case tree @ ClassDef(mods, name, tparams, impl) =>
@@ -238,7 +244,7 @@ trait Namers {
           sym setInfo completerOf(tree)
         case tree @ Import(_, _) =>
           sym setInfo completerOf(tree)
-      }
+      })
     }
 
     // we have several occasions when so called "maybe expandees" need special care
