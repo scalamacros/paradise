@@ -5,7 +5,7 @@ object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
     scalaVersion := "2.11.0",
     crossVersion := CrossVersion.full,
-    version := "2.0.0-SNAPSHOT",
+    version := "2.1.0-SNAPSHOT",
     organization := "org.scalamacros",
     description := "Empowers production Scala compiler with latest macro developments",
     resolvers += Resolver.sonatypeRepo("snapshots"),
