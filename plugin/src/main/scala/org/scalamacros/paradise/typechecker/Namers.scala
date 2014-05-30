@@ -395,7 +395,7 @@ trait Namers {
           val failedToMaterializeDuringExpansion = isWeak(m)
           val aliveAndKicking = !destroyedDuringExpansion && !failedToMaterializeDuringExpansion
           if (aliveAndKicking && isNotExpandable(c)) {
-            restoreCompleter(m)
+            if (worthBackingUp) restoreCompleter(m)
             val maybeExpandee = m.rawInfo.isInstanceOf[ParadiseNamer#MaybeExpandeeCompleter]
             if (maybeExpandee) markMaybeExpandee(m) else markNotExpandable(m)
           }
