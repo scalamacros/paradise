@@ -527,7 +527,7 @@ trait Namers {
       val companion = if (expandee.isInstanceOf[ClassDef]) companionSymbolOf(sym, context) else NoSymbol
       val companionSource = if (!isWeak(companion)) attachedSource(companion) else EmptyTree
       val expandees = List(annottee, expandee, companionSource).distinct.filterNot(_.isEmpty)
-      val safeExpandees = expandees.map(_.duplicate).map(_.setSymbol(NoSymbol))
+      val safeExpandees = expandees.map(expandee => duplicateAndKeepPositions(expandee)).map(_.setSymbol(NoSymbol))
       val prefix = Select(ann, nme.macroTransform) setSymbol mann.info.member(nme.macroTransform) setPos ann.pos
       Apply(prefix, safeExpandees) setPos ann.pos
     }
