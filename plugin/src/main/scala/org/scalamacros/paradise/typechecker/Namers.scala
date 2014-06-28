@@ -448,7 +448,7 @@ trait Namers {
       def exists(sym: Symbol) = if (canDefineMann(sym)) sym.exists else false
       def importedSymbol(imp: ImportInfo, name: Name): Symbol = { // TODO: be more precise in reproducing importSig and importedSymbol
         val impContext = context.enclosingContextChain.find(_.tree.symbol == imp.tree.symbol).get
-        val sym = probeMacroAnnotation(impContext.outer, imp.tree.expr)
+        val sym = imp.tree.cached("importQualProbe", probeMacroAnnotation(impContext.outer, imp.tree.expr))
         val pre = if (reallyExists(sym) && isAccessible(impContext, sym)) sym.tpe else NoType
         var result: Symbol = NoSymbol
         var renamed = false
