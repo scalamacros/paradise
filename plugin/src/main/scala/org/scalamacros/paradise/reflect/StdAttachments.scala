@@ -28,8 +28,8 @@ trait StdAttachments {
 
   // here we should really store and retrieve duplicates of trees in order to avoid leakage through tree attributes
   case class SymbolSourceAttachment(source: Tree)
-  def attachSource(sym: Symbol, tree: Tree): Symbol = if (sym != null && sym != NoSymbol) sym.updateAttachment(SymbolSourceAttachment(tree.duplicate)) else sym
-  def attachedSource(sym: Symbol): Tree = if (sym != null && sym != NoSymbol) sym.attachments.get[SymbolSourceAttachment].map(_.source.duplicate).getOrElse(EmptyTree) else EmptyTree
+  def attachSource(sym: Symbol, tree: Tree): Symbol = if (sym != null && sym != NoSymbol) sym.updateAttachment(SymbolSourceAttachment(duplicateAndKeepPositions(tree))) else sym
+  def attachedSource(sym: Symbol): Tree = if (sym != null && sym != NoSymbol) sym.attachments.get[SymbolSourceAttachment].map(att => duplicateAndKeepPositions(att.source)).getOrElse(EmptyTree) else EmptyTree
 
   // unfortunately we cannot duplicate here, because that would dissociate the symbol from its derived symbols
   // that's because attachExpansion(tree) happens prior to enterSym(tree), so if we duplicate the assigned symbol never makes it into the att
@@ -39,8 +39,8 @@ trait StdAttachments {
   // TODO: should be a better solution
   case class SymbolExpansionAttachment(expansion: List[Tree])
   def hasAttachedExpansion(sym: Symbol) = sym.attachments.get[SymbolExpansionAttachment].isDefined
-  def attachExpansion(sym: Symbol, trees: List[Tree]): Symbol = if (sym != null && sym != NoSymbol) sym.updateAttachment(SymbolExpansionAttachment(trees/*.map(_.duplicate)*/)) else sym
-  def attachedExpansion(sym: Symbol): Option[List[Tree]] = if (sym != null && sym != NoSymbol) sym.attachments.get[SymbolExpansionAttachment].map(_.expansion/*.map(_.duplicate)*/) else None
+  def attachExpansion(sym: Symbol, trees: List[Tree]): Symbol = if (sym != null && sym != NoSymbol) sym.updateAttachment(SymbolExpansionAttachment(trees/*.map(tree => duplicateAndKeepPositions(tree))*/)) else sym
+  def attachedExpansion(sym: Symbol): Option[List[Tree]] = if (sym != null && sym != NoSymbol) sym.attachments.get[SymbolExpansionAttachment].map(_.expansion/*.map(tree => duplicateAndKeepPositions(tree))*/) else None
 
   import SymbolExpansionStatus._
   private def checkExpansionStatus(sym: Symbol, p: SymbolExpansionStatus => Boolean) = sym.attachments.get[SymbolExpansionStatus].map(p).getOrElse(false)
