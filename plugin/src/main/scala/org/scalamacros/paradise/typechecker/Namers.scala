@@ -352,7 +352,7 @@ trait Namers {
           def maybeExpand(annotation: Tree, annottee: Tree, maybeExpandee: Tree): Option[List[Tree]] = {
             val treeInfo.Applied(Select(New(tpt), nme.CONSTRUCTOR), _, _) = annotation
             val mann = probeMacroAnnotation(context, tpt)
-            if (mann.isMacroAnnotation) {
+            if (mann.isMacroAnnotation && context.macrosEnabled) {
               assert(!currentRun.compiles(mann), mann)
               val annm = prepareAnnotationMacro(annotation, mann, sym, annottee, maybeExpandee)
               expandAnnotationMacro(tree, annm)
