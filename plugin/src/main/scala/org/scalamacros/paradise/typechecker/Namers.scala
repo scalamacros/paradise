@@ -223,13 +223,14 @@ trait Namers {
             val m = ensureCompanionObject(tree, caseModuleDef)
             m.moduleClass.updateAttachment(new ClassForCaseCompanionAttachment(tree))
           }
-          if (treeInfo.anyConstructorHasDefault(tree)) {
+          val hasDefault = impl.body exists treeInfo.isConstructorWithDefault
+          if (hasDefault) {
             val m = ensureCompanionObject(tree)
             m.updateAttachment(new ConstructorDefaultsAttachment(tree, null))
           }
           val owner = tree.symbol.owner
-          if (settings.lint && owner.isPackageObjectClass && !mods.isImplicit) {
-            context.unit.warning(tree.pos,
+          if (settings.warnPackageObjectClasses && owner.isPackageObjectClass && !mods.isImplicit) {
+            reporter.warning(tree.pos,
               "it is not recommended to define classes/objects inside of package objects.\n" +
               "If possible, define " + tree.symbol + " in " + owner.skipPackageObject + " instead."
             )
