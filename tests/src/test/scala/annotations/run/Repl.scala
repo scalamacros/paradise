@@ -12,7 +12,7 @@ class Repl extends FunSuite {
     s.classpath.value = sys.props("classpath.for.repl.tests")
     s.plugin.value = List(sys.props("macroparadise.plugin.jar"))
     val lines = ILoop.runForTranscript(code, s).lines.toList
-    lines.drop(3).map(_.replaceAll("\\s+$","")).mkString("\n").trim.stripSuffix("scala>").trim
+    lines.drop(3).dropRight(2).map(_.replaceAll("\\s+$","")).mkString("\n").trim.stripSuffix("scala>").trim
   }
 
   test("precompiled macros expand") {
