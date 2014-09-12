@@ -125,7 +125,8 @@ object build extends Build {
   ) settings (
     crossVersion := CrossVersion.binary,
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
-    addCompilerPlugin("org.scalamacros" % "paradise_2.10.4" % "2.0.0-M5"),
+    scalaVersion := "2.10.4", // NOTE: we can compile quasiquotes with a fixed version of Scala, because it's supposed to be binary cross-versioned anyway
+    addCompilerPlugin("org.scalamacros" % "paradise_2.10.4" % "2.0.0"),
     javacOptions ++= Seq("-target", "1.6", "-source", "1.6"),
     scalacOptions in Compile <++= (Keys.`package` in (myma, Compile), resourceDirectory in (myma, Compile)) map { (jar: File, resources: File) =>
       System.setProperty("myma.whitelist.conf", resources.getAbsolutePath + "/whitelist.conf")
