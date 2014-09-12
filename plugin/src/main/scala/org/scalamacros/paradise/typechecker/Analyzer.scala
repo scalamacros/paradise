@@ -30,6 +30,11 @@ trait Analyzer extends NscAnalyzer
       currentRun.compiledFiles.exists(fname => fname != null && fname.endsWith(universeDotScala))
     }
 
+    // NOTE: before 2.10.5, fundep materialization wasn't available on 2.10.x
+    // so we implemented it in this plugin and, consequently, had it always turned on
+    // now it's a compiler flag, so it can be either on or off, but we keep it on for compatibility purposes
+    settings.YfundepMaterialization.value = true
+
     if (haveScalaReflect && !compilingScalaReflect) {
       paradiseDefinitions.init()
       fastTrack.hijack()
