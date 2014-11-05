@@ -38,7 +38,7 @@ trait Namers {
       }
       tree.symbol match {
         case NoSymbol => try dispatch() catch typeErrorHandler(tree, namer.context)
-        case sym      => enterExistingSym(sym)
+        case sym      => enterExistingSym(sym, tree)
       }
     }
 
@@ -85,6 +85,7 @@ trait Namers {
             if (isRedefinition) {
               updatePosFlags(existing, tree.pos, mods.flags)
               setPrivateWithin(tree, existing)
+              clearRenamedCaseAccessors(existing)
               tree.symbol = existing
               existing
             }
