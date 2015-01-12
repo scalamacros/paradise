@@ -47,7 +47,7 @@ trait TreeInfo {
               AnnotationZipper(ann, vparam1: ValDef, _) <- loop(vparam, deep = false)
               vparams1 = vparams.updated(vparams.indexOf(vparam), vparam1)
               vparamss1 = vparamss.updated(vparamss.indexOf(vparams), vparams1)
-            } yield AnnotationZipper(ann, vparam1, SyntacticClassDef(mods, name, tparams, constrMods, vparamss1, earlyDefs, parents, selfdef, body))
+            } yield AnnotationZipper(ann, vparam1, PatchedSyntacticClassDef(mods, name, tparams, constrMods, vparamss1, earlyDefs, parents, selfdef, body))
             czippers ++ tzippers ++ vzippers
           }
         case SyntacticTraitDef(mods, name, tparams, earlyDefs, parents, selfdef, body) =>
@@ -114,6 +114,15 @@ trait TreeInfo {
           Nil
       }
       loop(tree, deep = true)
+    }
+
+    private object PatchedSyntacticClassDef {
+      def apply(mods: Modifiers, name: TypeName, tparams: List[Tree],
+                constrMods: Modifiers, vparamss: List[List[Tree]],
+                earlyDefs: List[Tree], parents: List[Tree], selfType: Tree, body: List[Tree]): ClassDef = {
+        // NOTE: works around SI-8771 and hopefully fixes https://github.com/scalamacros/paradise/issues/53 for good
+        SyntacticClassDef(mods, name, tparams, constrMods, vparamss.map(_.map(_.duplicate)), earlyDefs, parents, selfType, body)
+      }
     }
   }
 
