@@ -31,7 +31,8 @@ trait TreeInfo {
         case SyntacticClassDef(mods, name, tparams, constrMods, vparamss, earlyDefs, parents, selfdef, body) =>
           val cdef = tree.asInstanceOf[ClassDef]
           val czippers = mods.annotations.map(ann => {
-            val annottee = cdef.copy(mods = mods.mapAnnotations(_ diff List(ann)))
+            val mods1 = mods.mapAnnotations(_ diff List(ann))
+            val annottee = PatchedSyntacticClassDef(mods1, name, tparams, constrMods, vparamss, earlyDefs, parents, selfdef, body)
             AnnotationZipper(ann, annottee, annottee)
           })
           if (!deep) czippers
@@ -40,7 +41,7 @@ trait TreeInfo {
               tparam <- tparams
               AnnotationZipper(ann, tparam1: TypeDef, _) <- loop(tparam, deep = false)
               tparams1 = tparams.updated(tparams.indexOf(tparam), tparam1)
-            } yield AnnotationZipper(ann, tparam1, cdef.copy(tparams = tparams1))
+            } yield AnnotationZipper(ann, tparam1, PatchedSyntacticClassDef(mods, name, tparams1, constrMods, vparamss, earlyDefs, parents, selfdef, body))
             val vzippers = for {
               vparams <- vparamss
               vparam <- vparams
