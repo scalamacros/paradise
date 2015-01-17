@@ -51,7 +51,15 @@ trait Expanders {
         // expanding at block level => only allow to see outside of the block
         else newTyper(rollThroughImports(context).outer)
       }
-      def expand() = (new DefMacroExpander(typer, expandee, NOmode, WildcardType) {
+      def onlyIfExpansionAllowed[T](expand: => Option[T]): Option[T] = {
+        if (settings.Ymacroexpand.value == settings.MacroExpand.None) None
+        else {
+          val oldYmacroexpand = settings.Ymacroexpand.value
+          try { settings.Ymacroexpand.value = settings.MacroExpand.Normal; expand }
+          catch { case ex: Exception => settings.Ymacroexpand.value = oldYmacroexpand; throw ex }
+        }
+      }
+      def expand(): Option[Tree] = (new DefMacroExpander(typer, expandee, NOmode, WildcardType) {
         override def onSuccess(expanded: Tree) = expanded
       })(expandee) match {
         case tree if tree.isErroneous => None
@@ -110,7 +118,7 @@ trait Expanders {
         }
       }
       for {
-        lowlevelExpansion <- expand()
+        lowlevelExpansion <- onlyIfExpansionAllowed(expand())
         expansion <- Some(extract(lowlevelExpansion))
         duplicated = expansion.map(duplicateAndKeepPositions)
         validatedExpansion <- validate(duplicated)
