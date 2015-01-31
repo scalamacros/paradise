@@ -563,6 +563,7 @@ trait Namers {
     }
 
     // see https://github.com/scalamacros/paradise/issues/7
+    // also see https://github.com/scalamacros/paradise/issues/64
     def patchedCompanionSymbolOf(original: Symbol, ctx: Context): Symbol = {
       val owner = original.owner
       // SI-7264 Force the info of owners from previous compilation runs.
@@ -576,7 +577,34 @@ trait Namers {
         owner.initialize
       }
       original.companionSymbol orElse {
-        ctx.lookup(original.name.companionName, owner).suchThat(sym =>
+        implicit class PatchedContext(ctx: Context) {
+          trait PatchedLookupResult { def suchThat(criterion: Symbol => Boolean): Symbol }
+          def patchedLookup(name: Name, expectedOwner: Symbol) = new PatchedLookupResult {
+            override def suchThat(criterion: Symbol => Boolean): Symbol = {
+              var res: Symbol = NoSymbol
+              var ctx = PatchedContext.this.ctx
+              while (res == NoSymbol && ctx.outer != ctx) {
+                // NOTE: original implementation says `val s = ctx.scope lookup name`
+                // but we can't use it, because Scope.lookup returns wrong results when the lookup is ambiguous
+                // and that triggers https://github.com/scalamacros/paradise/issues/64
+                val s = {
+                  val lookupResult = ctx.scope.lookupAll(name).filter(criterion).toList
+                  lookupResult match {
+                    case Nil => NoSymbol
+                    case List(unique) => unique
+                    case _ => abort(s"unexpected multiple results for a companion symbol lookup for $original#{$original.id}")
+                  }
+                }
+                if (s != NoSymbol && s.owner == expectedOwner)
+                  res = s
+                else
+                  ctx = ctx.outer
+              }
+              res
+            }
+          }
+        }
+        ctx.patchedLookup(original.name.companionName, owner).suchThat(sym =>
           (original.isTerm || sym.hasModuleFlag) &&
           (sym isCoDefinedWith original)
         )
