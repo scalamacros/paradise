@@ -554,6 +554,7 @@ trait Namers {
         else newTyper(rollThroughImports(context).outer)
       ).asInstanceOf[ParadiseTyper]
       import typer.ParadiseTyperErrorGen._
+      def onlyIfExpansionAllowed[T](expand: => Option[T]) = if (settings.Ymacronoexpand.value) None else expand
       def expand() = macroExpandUntyped(typer, expandee)
       def extract(expanded: Tree): List[Tree] = expanded match {
         case Block(stats, Literal(Constant(()))) => stats // ugh
@@ -608,7 +609,7 @@ trait Namers {
         }
       }
       for {
-        lowlevelExpansion <- expand()
+        lowlevelExpansion <- onlyIfExpansionAllowed(expand())
         expansion <- Some(extract(lowlevelExpansion))
         duplicated = expansion.map(duplicateAndKeepPositions)
         validatedExpansion <- validate(duplicated)
