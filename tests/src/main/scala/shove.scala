@@ -1,4 +1,4 @@
-import scala.reflect.macros.Context
+import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
 
@@ -12,20 +12,20 @@ object shoveMacro {
         case ValDef(mods, name, tpt, rhs) :: Nil =>
           ClassDef(
             Modifiers(IMPLICIT),
-            newTypeName(s"${victim}With$name"),
+            TypeName(s"${victim}With$name"),
             List(),
             Template(
-              List(Select(Ident(newTermName("scala")), newTypeName("AnyRef"))),
-              emptyValDef,
+              List(Select(Ident(TermName("scala")), TypeName("AnyRef"))),
+              noSelfType,
               List(
-                ValDef(Modifiers(PRIVATE | LOCAL), newTermName("x"), victim, EmptyTree),
+                ValDef(Modifiers(PRIVATE | LOCAL), TermName("x"), victim, EmptyTree),
                 DefDef(
                   Modifiers(),
-                  nme.CONSTRUCTOR,
+                  termNames.CONSTRUCTOR,
                   List(),
-                  List(List(ValDef(Modifiers(PARAM), newTermName("x"), victim, EmptyTree))),
+                  List(List(ValDef(Modifiers(PARAM), TermName("x"), victim, EmptyTree))),
                   TypeTree(),
-                  Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), c.literalUnit.tree)
+                  Block(List(Apply(Select(Super(This(typeNames.EMPTY), typeNames.EMPTY), termNames.CONSTRUCTOR), List())), Literal(Constant(())))
                 ),
                 ValDef(mods, name, tpt, rhs)
               )
@@ -38,11 +38,11 @@ object shoveMacro {
 }
 
 class shove[A] extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro shoveMacro.impl
+  def macroTransform(annottees: Any*): Any = macro shoveMacro.impl
 }
 
 package pkg {
   class shove extends StaticAnnotation {
-    def macroTransform(annottees: Any*) = macro shoveMacro.impl
+    def macroTransform(annottees: Any*): Any = macro shoveMacro.impl
   }
 }
