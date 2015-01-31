@@ -9,8 +9,8 @@ class Repl extends FunSuite {
     val s = new Settings
     s.Xnojline.value = true
     s.usejavacp.value = false
-    s.classpath.value = sys.props("classpath.for.repl.tests")
-    s.plugin.value = List(sys.props("macroparadise.plugin.jar"))
+    s.classpath.value = sys.props("sbt.paths.tests.classpath")
+    s.plugin.value = List(sys.props("sbt.paths.plugin.jar"))
     val lines = ILoop.runForTranscript(code, s).lines.toList
     lines.drop(3).dropRight(2).map(_.replaceAll("\\s+$","")).mkString("\n").trim.stripSuffix("scala>").trim
   }
