@@ -25,7 +25,7 @@ object socialMacros {
     val result = {
       annottees.map(_.tree).toList match {
         case ClassDef(mods, name, tparams, impl) :: rest =>
-          def plusOne = Apply(Select(New(Ident(TypeName("plusOne"))), nme.CONSTRUCTOR), Nil)
+          def plusOne = Apply(Select(New(Ident(TypeName("plusOne"))), termNames.CONSTRUCTOR), Nil)
           val mods1 = Modifiers(mods.flags, mods.privateWithin, mods.annotations :+ plusOne :+ plusOne)
           ClassDef(mods1, name, tparams, impl) :: rest
       }

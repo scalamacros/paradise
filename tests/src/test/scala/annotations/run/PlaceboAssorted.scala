@@ -11,7 +11,7 @@ class PlaceboAssortedZoo {
 
 class PlaceboAssorted extends FunSuite {
   test("nested") {
-    assert(typeOf[PlaceboAssortedZoo].declarations.sorted.map(_.toString).mkString("\n") === """
+    assert(typeOf[PlaceboAssortedZoo].decls.sorted.map(_.toString).mkString("\n") === """
       |constructor PlaceboAssortedZoo
       |method foo
       |type T
