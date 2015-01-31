@@ -179,7 +179,7 @@ object build extends Build {
 
   lazy val usePluginSettings = Seq(
     scalacOptions in Compile <++= (Keys.`package` in (plugin, Compile)) map { (jar: File) =>
-      System.setProperty("macroparadise.plugin.jar", jar.getAbsolutePath)
+      System.setProperty("sbt.paths.plugin.jar", jar.getAbsolutePath)
       val addPlugin = "-Xplugin:" + jar.getAbsolutePath
       // Thanks Jason for this cool idea (taken from https://github.com/retronym/boxer)
       // add plugin timestamp to compiler options to trigger recompile of
@@ -213,11 +213,12 @@ object build extends Build {
       // TODO: I haven't yet ported negative tests to SBT, so for now I'm excluding them
       val (anns :: Nil, others) = root.listFiles.toList.partition(_.getName == "annotations")
       val (negAnns, otherAnns) = anns.listFiles.toList.partition(_.getName == "neg")
+      System.setProperty("sbt.paths.tests.scaladoc", anns.listFiles.toList.filter(_.getName == "scaladoc").head.getAbsolutePath)
       otherAnns ++ others
     },
     fullClasspath in Test := {
       val testcp = (fullClasspath in Test).value.files.map(_.getAbsolutePath).mkString(java.io.File.pathSeparatorChar.toString)
-      sys.props("classpath.for.repl.tests") = testcp
+      sys.props("sbt.paths.tests.classpath") = testcp
       (fullClasspath in Test).value
     },
     scalacOptions ++= Seq()
