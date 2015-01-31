@@ -618,9 +618,15 @@ trait Namers {
     }
 
     def expandMacroAnnotations(stats: List[Tree]): List[Tree] = {
-      def mightNeedTransform(stat: Tree) = stat match {
+      def mightNeedTransform(stat: Tree): Boolean = stat match {
+        case stat: DocDef => mightNeedTransform(stat.definition)
         case stat: MemberDef => isMaybeExpandee(stat.symbol) || hasAttachedExpansion(stat.symbol)
         case _ => false
+      }
+      def rewrapAfterTransform(stat: Tree, transformed: List[Tree]): List[Tree] = (stat, transformed) match {
+        case (stat @ DocDef(comment, _), Nil) => reporter.warning(stat.pos, "this documentation comment got destroyed during macro expansion"); Nil
+        case (stat @ DocDef(comment, _), List(transformed: MemberDef)) => List(treeCopy.DocDef(stat, comment, transformed))
+        case (_, Nil | List(_: MemberDef)) => transformed
       }
       if (phase.id > currentRun.typerPhase.id || !stats.exists(mightNeedTransform)) stats
       else stats.flatMap(stat => {
@@ -635,7 +641,7 @@ trait Namers {
           }
           val derivedTrees = attachedExpansion(sym).getOrElse(List(stat))
           val (me, others) = derivedTrees.partition(_.symbol == sym)
-          me ++ expandMacroAnnotations(others)
+          rewrapAfterTransform(stat, me) ++ expandMacroAnnotations(others)
         } else {
           List(stat)
         }
