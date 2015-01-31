@@ -69,7 +69,7 @@ object kaseMacro {
 
     def expand(annottees: List[c.Tree]): List[c.Tree] = {
       val cdef @ ClassDef(_, name, tparams, Template(_, _, cbody)) = annottees.head
-      val primaryCtor = cbody.collect{ case ddef @ DefDef(_, nme.CONSTRUCTOR, _, _, _, _) => ddef }.head
+      val primaryCtor = cbody.collect{ case ddef @ DefDef(_, termNames.CONSTRUCTOR, _, _, _, _) => ddef }.head
       if (primaryCtor.vparamss.isEmpty) c.abort(c.enclosingPosition, "`kase' is not appplicable to classes without a parameter list")
       val primaryParamss = primaryCtor.vparamss
       val primaryParams = primaryParamss.head
@@ -99,7 +99,7 @@ object kaseMacro {
             val secondaryCopyParamss = secondaryParamss.map(_.map(p => ValDef(unmakeDefault(unmakeCaseAccessor(p.mods)), p.name, p.tpt, EmptyTree)))
             val copyParamss = primaryCopyParamss :: secondaryCopyParamss
             val copyArgss = copyParamss.map(_.map(p => Ident(p.name)))
-            val copyBody = ((Select(New(Ident(cdef.name)), nme.CONSTRUCTOR): Tree) /: copyArgss)((callee, args) => Apply(callee, args))
+            val copyBody = ((Select(New(Ident(cdef.name)), termNames.CONSTRUCTOR): Tree) /: copyArgss)((callee, args) => Apply(callee, args))
             val copyMethod = DefDef(SyntheticMods, TermName("copy"), copyTparams, copyParamss, TypeTree(), copyBody)
             cbody2 :+ copyMethod
           }
@@ -112,7 +112,7 @@ object kaseMacro {
           val productArityMethod = DefDef(SyntheticMods, TermName("productArity"), Nil, Nil, TypeTree(), Literal(Constant(primaryParams.length)))
           val productElementParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
           def productElementByIndex(i: Int) = CaseDef(Literal(Constant(i)), EmptyTree, Select(This(name), primaryParams(i).name))
-          val productElementFallback = CaseDef(Ident(nme.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), nme.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), TermName("toString")), List())))))
+          val productElementFallback = CaseDef(Ident(termNames.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), termNames.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), TermName("toString")), List())))))
           val productElementBody = Match(Ident(productElementParam.name), (0 until primaryParams.length map productElementByIndex toList) :+ productElementFallback)
           val productElementMethod = DefDef(SyntheticMods, TermName("productElement"), Nil, List(List(productElementParam )), TypeTree(), productElementBody)
           val scalaRunTime = Select(Select(Ident(TermName("scala")), TermName("runtime")), TermName("ScalaRunTime"))
@@ -155,8 +155,8 @@ object kaseMacro {
               Apply(Select(thatC, TermName("canEqual")), List(This(name)))
             }
             def sameTypeCheck = {
-              val ifSameType = CaseDef(Typed(Ident(nme.WILDCARD), ourPolyType), EmptyTree, Literal(Constant(true)))
-              val otherwise = CaseDef(Ident(nme.WILDCARD), EmptyTree, Literal(Constant(false)))
+              val ifSameType = CaseDef(Typed(Ident(termNames.WILDCARD), ourPolyType), EmptyTree, Literal(Constant(true)))
+              val otherwise = CaseDef(Ident(termNames.WILDCARD), EmptyTree, Literal(Constant(false)))
               Match(Ident(equalsParam.name), List(ifSameType, otherwise))
             }
             def sameFieldsCheck = {
@@ -187,7 +187,7 @@ object kaseMacro {
           val funClass = Select(Select(Ident(TermName("scala")), TermName("runtime")), TypeName("AbstractFunction" + primaryParams.length))
           val funParent = AppliedTypeTree(funClass, primaryParams.map(_.tpt) :+ Ident(name))
           val parents = if (shouldInheritFromFun) List(funParent) else List(Ident(AnyRefClass))
-          val emptyCtor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
+          val emptyCtor = DefDef(Modifiers(), termNames.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(typeNames.EMPTY), typeNames.EMPTY), termNames.CONSTRUCTOR), List())), Literal(Constant(()))))
           ModuleDef(SyntheticMods, name.toTermName, Template(parents, noSelfType, List(emptyCtor)))
         }
 
@@ -206,7 +206,7 @@ object kaseMacro {
           val applyTparams = tparams.map(p => TypeDef(unmakeVariant(p.mods), p.name, p.tparams, p.rhs))
           val applyParamss = primaryParamss.map(_.map(p => ValDef(unmakeCaseAccessor(p.mods), p.name, p.tpt, p.rhs)))
           val applyArgss = applyParamss.map(_.map(p => Ident(p.name)))
-          val applyBody = ((Select(New(ourPolyType), nme.CONSTRUCTOR): Tree) /: applyArgss)((callee, args) => Apply(callee, args))
+          val applyBody = ((Select(New(ourPolyType), termNames.CONSTRUCTOR): Tree) /: applyArgss)((callee, args) => Apply(callee, args))
           val applyMethod = DefDef(SyntheticCaseMods, TermName("apply"), applyTparams, applyParamss, TypeTree(), applyBody)
           mbody1 :+ applyMethod
         }
@@ -263,7 +263,7 @@ object kaseMacro {
         val productPrefixMethod = DefDef(OverrideSyntheticMods, TermName("productPrefix"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
         val productArityMethod = DefDef(SyntheticMods, TermName("productArity"), Nil, Nil, TypeTree(), Literal(Constant(0)))
         val productElementParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
-        val productElementBody = Match(Ident(productElementParam.name), List(CaseDef(Ident(nme.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), nme.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), TermName("toString")), List())))))))
+        val productElementBody = Match(Ident(productElementParam.name), List(CaseDef(Ident(termNames.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), termNames.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), TermName("toString")), List())))))))
         val productElementMethod = DefDef(SyntheticMods, TermName("productElement"), Nil, List(List(productElementParam )), TypeTree(), productElementBody)
         val scalaRunTime = Select(Select(Ident(TermName("scala")), TermName("runtime")), TermName("ScalaRunTime"))
         val productIteratorBody = Apply(TypeApply(Select(scalaRunTime, TermName("typedProductIterator")), List(Ident(TypeName("Any")))), List(This(name.toTypeName)))
@@ -276,7 +276,7 @@ object kaseMacro {
 
       // step 3: inject hashcode
       val body3 = {
-        val hashcodeMethod = DefDef(OverrideSyntheticMods, TermName("hashCode"), Nil, Nil, TypeTree(), Literal(Constant((name.decoded.hashCode))))
+        val hashcodeMethod = DefDef(OverrideSyntheticMods, TermName("hashCode"), Nil, Nil, TypeTree(), Literal(Constant((name.decodedName.toString.hashCode))))
         body2 :+ hashcodeMethod
       }
 
