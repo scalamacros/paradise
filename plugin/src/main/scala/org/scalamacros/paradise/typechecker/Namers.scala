@@ -623,9 +623,10 @@ trait Namers {
         case _ => false
       }
       def rewrapAfterTransform(stat: Tree, transformed: List[Tree]): List[Tree] = (stat, transformed) match {
-        case (stat @ DocDef(comment, _), Nil) => reporter.warning(stat.pos, "this documentation comment got destroyed during macro expansion"); Nil
         case (stat @ DocDef(comment, _), List(transformed: MemberDef)) => List(treeCopy.DocDef(stat, comment, transformed))
+        case (stat @ DocDef(comment, _), List(transformed: DocDef)) => List(transformed)
         case (_, Nil | List(_: MemberDef)) => transformed
+        case (_, unexpected) => unexpected // NOTE: who knows how people are already using macro annotations, so it's scary to fail here
       }
       if (phase.id > currentRun.typerPhase.id || !stats.exists(mightNeedTransform)) stats
       else stats.flatMap(stat => {
