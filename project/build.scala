@@ -8,7 +8,7 @@ import com.typesafe.tools.mima.plugin.MimaKeys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.10.5-SNAPSHOT",
+    scalaVersion := "2.10.5",
     crossVersion := CrossVersion.full,
     version := "2.1.0-SNAPSHOT",
     organization := "org.scalamacros",
