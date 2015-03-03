@@ -15,6 +15,7 @@ object build extends Build {
     description := "Empowers production Scala compiler with latest macro developments",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers += "staging-2.10.5" at "https://oss.sonatype.org/content/repositories/orgscala-lang-1186/",
     scalacOptions ++= Seq("-deprecation", "-feature", "-optimise"),
     parallelExecution in Test := false, // hello, reflection sync!!
     logBuffered := false,
