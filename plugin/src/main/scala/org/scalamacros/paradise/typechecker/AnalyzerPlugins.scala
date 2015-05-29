@@ -10,6 +10,7 @@ trait AnalyzerPlugins extends Compilers
                         with Enrichments
 {
   import global._
+  import scala.reflect.internal.Flags._
   import analyzer._
   import analyzer.{Namer => NscNamer, AnalyzerPlugin => NscAnalyzerPlugin, MacroPlugin => NscMacroPlugin}
 
@@ -36,5 +37,21 @@ trait AnalyzerPlugins extends Compilers
 
     override def pluginsEnsureCompanionObject(namer: NscNamer, cdef: ClassDef, creator: ClassDef => Tree = companionModuleDef(_)) =
       Some(mkNamer(namer).ensureCompanionObject(cdef, creator))
+
+    override def pluginsTypedMacroBody(typer: Typer, ddef: DefDef): Option[Tree] = {
+      if (ddef.name == nme.macroTransform && typer.context.owner.owner.hasFlag(MACRO)) {
+        val result = standardTypedMacroBody(typer, ddef)
+        loadMacroImplBinding(ddef.symbol).map(binding => {
+          val message =
+            "implementation restriction: macro annotation impls cannot have typetag context bounds " +
+            "(consider taking apart c.macroApplication and manually calling c.typecheck on the type arguments)"
+          val hasTags = binding.signature.flatten.exists(_.isTag)
+          if (hasTags) { typer.context.error(ddef.pos, message); EmptyTree }
+          else result
+        })
+      } else {
+        None
+      }
+    }
   }
 }
