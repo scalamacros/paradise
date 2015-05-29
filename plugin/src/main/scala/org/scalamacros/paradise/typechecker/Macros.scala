@@ -5,6 +5,7 @@ trait Macros {
   self: Analyzer =>
 
   import global._
+  import definitions._
   import treeInfo._
   import compat.symbolTable.duplicateAndKeepPositions
   import scala.language.reflectiveCalls
@@ -12,6 +13,24 @@ trait Macros {
   import scala.tools.nsc.typechecker.MacrosStats._
   import scala.util.control.ControlThrowable
   import scala.reflect.macros.runtime.AbortMacroException
+  import scala.reflect.internal.Flags._
+
+  override def typedMacroBody(typer: Typer, ddef: DefDef): Tree = {
+    val result = invokeSuper("typedMacroBody", typer, ddef).asInstanceOf[Tree]
+    val clazz = typer.context.owner.owner
+    val isMacroAnnot = clazz isNonBottomSubClass AnnotationClass // NOTE: that's an approximation, see 2.11.x
+    if (ddef.name == nme.macroTransform && isMacroAnnot) {
+      val binding = loadMacroImplBinding(ddef.symbol)
+      val message =
+        "implementation restriction: macro annotation impls cannot have typetag context bounds " +
+        "(consider taking apart c.macroApplication and manually calling c.typecheck on the type arguments)"
+      val hasTags = binding.signature.exists(_ >= 0)
+      if (hasTags) { typer.context.error(ddef.pos, message); EmptyTree }
+      else result
+    } else {
+      result
+    }
+  }
 
   private sealed abstract class MacroExpansionResult
   private case class Success(expanded: Tree) extends MacroExpansionResult
@@ -271,6 +290,12 @@ trait Macros {
   private def popMacroContext() = invokeSuper("popMacroContext")
   private def macroArgs(typer: Typer, expandee: Tree): MacroArgs = invokeSuper("macroArgs", typer, expandee).asInstanceOf[MacroArgs]
   private def macroRuntime(macroDef: Symbol): MacroRuntime = invokeSuper("macroRuntime", macroDef).asInstanceOf[MacroRuntime]
+
+  private case class MacroImplBinding(signature: List[Int])
+  private def loadMacroImplBinding(macroDef: Symbol): MacroImplBinding = {
+    val superBinding = invokeSuper("loadMacroImplBinding", macroDef).asInstanceOf[{ val signature: List[Int] }]
+    MacroImplBinding(superBinding.signature)
+  }
 
   def invokeSuper(name: String, args: AnyRef*): AnyRef = {
     def invokeTraitPrivateMethod(clazz: Class[_], name: String, args: AnyRef*): AnyRef = {
