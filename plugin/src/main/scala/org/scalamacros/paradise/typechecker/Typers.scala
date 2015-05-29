@@ -65,6 +65,7 @@ trait Typers extends Macros {
         if (clazz != null && (clazz isNonBottomSubClass AnnotationClass)) {
           val macroTransform = clazz.info.member(nme.macroTransform)
           if (macroTransform != NoSymbol) {
+            clazz.setFlag(MACRO)
             def flavorOk = macroTransform.isMacro
             def paramssOk = mmap(macroTransform.paramss)(p => (p.name, p.info)) == List(List((nme.annottees, scalaRepeatedType(AnyTpe))))
             def tparamsOk = macroTransform.typeParams.isEmpty
@@ -74,7 +75,6 @@ trait Typers extends Macros {
             // TODO: revisit the decision about @Inherited
             if (clazz.getAnnotation(InheritedAttr).nonEmpty) MacroAnnotationCannotBeInheritedError(clazz)
             if (!clazz.isStatic) MacroAnnotationCannotBeMemberError(clazz)
-            clazz.setFlag(MACRO)
             // TODO: can't do this until it's scala.annotation.compileTimeOnly
             // otherwise we'll force our users to have scala-reflect.jar on classpath
             // clazz.addAnnotation(AnnotationInfo(CompileTimeOnlyAttr.tpe, List(Literal(Constant(MacroAnnotationNotExpandedMessage)) setType StringClass.tpe), Nil))
