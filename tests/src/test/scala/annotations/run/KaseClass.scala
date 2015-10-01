@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 @kase class KaseClassPreToplevelNocomp[T](x: T, y: Int = 2)(z: Boolean, w: String = "")
 object KaseClassPreToplevelPrecomp

@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 @kase class C[T](x: T, y: Int = 2)(val z: Boolean, val w: String = "")
 
