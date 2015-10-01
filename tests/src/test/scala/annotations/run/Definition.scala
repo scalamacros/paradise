@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => cm}
 
 class Definition extends FunSuite {

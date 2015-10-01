@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 @identity case class InteropIdentity(x: Int)
 @placebo case class InteropPlacebo(x: Int)

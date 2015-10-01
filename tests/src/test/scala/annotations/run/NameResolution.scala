@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 @identity1 class C1
 @pkg.identity2 class C2

@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 class TypeArgs extends FunSuite {
   test("macro annotations with type args expand") {
