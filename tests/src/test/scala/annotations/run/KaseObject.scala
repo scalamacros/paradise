@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 @kase object KaseObjectPreToplevelNocomp
 class KaseObjectPreToplevelPrecomp

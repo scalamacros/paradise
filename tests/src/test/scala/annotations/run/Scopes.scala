@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 class Scopes extends FunSuite {
   implicit val x = 42

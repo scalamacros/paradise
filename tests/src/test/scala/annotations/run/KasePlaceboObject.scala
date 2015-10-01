@@ -1,7 +1,6 @@
 package kase.placebo.objekt
 
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 import pkg._
 
 @kase object CPreToplevelNocomp
