@@ -30,4 +30,6 @@ import scala.collection.immutable.List
 import scala.collection.immutable.List
 
 @scala.annotation.unchecked.uncheckedVariance
-class ExponentialDummy
+class ExponentialDummy {
+  def dummy: List[_] = ???
+}

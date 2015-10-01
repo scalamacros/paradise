@@ -455,16 +455,24 @@ trait Namers {
         var result: Symbol = NoSymbol
         var renamed = false
         var selectors = imp.tree.selectors
+        def current = selectors.head
         while (selectors != Nil && result == NoSymbol) {
-          if (selectors.head.rename == name.toTermName)
-            result = nonLocalMember(pre, if (name.isTypeName) selectors.head.name.toTypeName else selectors.head.name)
+          if (current.rename == name.toTermName)
+            result = nonLocalMember(pre, if (name.isTypeName) current.name.toTypeName else current.name)
           else if (selectors.head.name == name.toTermName)
             renamed = true
           else if (selectors.head.name == nme.WILDCARD && !renamed)
             result = nonLocalMember(pre, name)
-          selectors = selectors.tail
+          if (result == NoSymbol)
+            selectors = selectors.tail
         }
-        result
+        if (settings.warnUnusedImport && selectors.nonEmpty && result != NoSymbol && imp.pos != NoPosition) {
+          val m_recordUsage = imp.getClass.getDeclaredMethods().find(_.getName == "recordUsage").get
+          m_recordUsage.setAccessible(true)
+          m_recordUsage.invoke(imp, current, result)
+        }
+        if (definitions isImportable result) result
+        else NoSymbol
       }
       // def isAccessible(cx: Context, sym: Symbol) = if (canDefineMann(cx.owner)) cx.isAccessible(sym, cx.prefix, superAccess = false) else false
       def isAccessible(cx: Context, sym: Symbol) = true // TODO: sorry, it's 2am, and I can't figure this out
