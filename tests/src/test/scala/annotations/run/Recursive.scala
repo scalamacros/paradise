@@ -1,7 +1,6 @@
 package recursive
 
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 import pkg._
 
 @plusTwo class CPreToplevelNocomp { override def toString = "CPreToplevelNocomp" }
