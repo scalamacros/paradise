@@ -132,6 +132,8 @@ object build extends Build {
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+    scalacOptions += "-Ywarn-unused-import",
+    scalacOptions += "-Xfatal-warnings",
     publishArtifact in Compile := false,
     unmanagedSourceDirectories in Test <<= (scalaSource in Test) { (root: File) =>
       // TODO: I haven't yet ported negative tests to SBT, so for now I'm excluding them

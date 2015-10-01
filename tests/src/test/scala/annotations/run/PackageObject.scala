@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 package object pkg1 {
   @doubler def foo(x: Int) = x

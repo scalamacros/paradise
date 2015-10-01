@@ -16,7 +16,6 @@ object kaseMacro {
 
   abstract class kaseHelper[C <: Context](val c: C) {
     import c.universe._
-    import definitions._
     import c.universe.{Flag => PublicFlags}
     import scala.reflect.internal.{Flags => InternalFlags}
 
@@ -249,7 +248,6 @@ object kaseMacro {
 
   class kaseObjectHelper[C <: Context](override val c: C) extends kaseHelper(c) {
     import c.universe._
-    import definitions._
 
     def expand(annottees: List[c.Tree]): List[c.Tree] = {
       val mdef @ ModuleDef(mods, name, Template(parents, self, body)) :: Nil = annottees
