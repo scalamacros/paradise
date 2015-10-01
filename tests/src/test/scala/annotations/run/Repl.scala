@@ -1,5 +1,4 @@
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 
 import scala.tools.nsc.Settings
 import scala.tools.nsc.interpreter._

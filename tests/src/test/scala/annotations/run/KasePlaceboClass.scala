@@ -1,7 +1,6 @@
 package kase.placebo.klass
 
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 import pkg._
 
 @kase class CPreToplevelNocomp[T](x: T, y: Int = 2)(z: Boolean, w: String = "")

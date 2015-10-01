@@ -1,7 +1,6 @@
 package placebo.objekt
 
 import org.scalatest.FunSuite
-import scala.reflect.runtime.universe._
 import pkg._
 
 @placebo object CPreToplevelNocomp { override def toString = "CPreToplevelNocomp" }
