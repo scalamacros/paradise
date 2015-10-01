@@ -5,7 +5,6 @@ import scala.annotation.StaticAnnotation
 object helloMacro {
   def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
-    import Flag._
     val result = {
       annottees.map(_.tree).toList match {
         case ModuleDef(mods, name, Template(parents, self, body)) :: Nil =>

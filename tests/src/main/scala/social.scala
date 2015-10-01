@@ -21,7 +21,6 @@ object socialMacros {
   }
   def plusTwo(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
-    import Flag._
     val result = {
       annottees.map(_.tree).toList match {
         case ClassDef(mods, name, tparams, impl) :: rest =>
