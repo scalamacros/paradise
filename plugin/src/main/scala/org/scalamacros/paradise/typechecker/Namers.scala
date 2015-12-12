@@ -18,6 +18,7 @@ trait Namers {
     import namer._
     val namerErrorGen = new ErrorGen(namer.typer)
     import namerErrorGen._
+    import NamerErrorGen._
 
     def enterSym(tree: Tree): Context = {
       def dispatch() = {
@@ -250,9 +251,12 @@ trait Namers {
           sym setInfo completerOf(tree)
           validateCompanionDefs(tree)
         case tree @ ValDef(_, _, _, _) =>
-          if (noEnterGetterSetter(tree)) {
-            tree.symbol setInfo completerOf(tree)
-          } else {
+          val isScala = !context.unit.isJava
+          if (isScala) {
+            if (nme.isSetterName(tree.name)) ValOrVarWithSetterSuffixError(tree)
+            if (tree.mods.isPrivateLocal && tree.mods.isCaseAccessor) PrivateThisCaseClassParameterError(tree)
+          }
+          if (isScala && deriveAccessors(tree)) {
             // when refactoring enterSym, I needed to decouple symbol creation and various syntheses
             // so that annotation expansion mechanism could be installed in-between of those
             // it went well except for one thing - ValDef symbol creation is very closely tied to syntheses
@@ -263,6 +267,8 @@ trait Namers {
             context.scope.unlink(tree.symbol)
             tree.symbol setInfo NoType
             enterGetterSetter(tree)
+          } else {
+            tree.symbol setInfo completerOf(tree)
           }
           if (isEnumConstant(tree))
             tree.symbol setInfo ConstantType(Constant(tree.symbol))
