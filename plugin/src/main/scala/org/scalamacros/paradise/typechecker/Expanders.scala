@@ -149,7 +149,9 @@ trait Expanders {
             assert(!sym.rawInfo.isInstanceOf[Namer#MaybeExpandeeCompleter])
           }
           val derivedTrees = attachedExpansion(sym).getOrElse(List(stat))
-          val (me, others) = derivedTrees.partition(_.symbol == sym)
+          // Rewrap DocDef in cases where the same class or object, by name, is output by the macro. This can't just check
+          // s.symbol == sym because in the case of nested classes, the original sym is destroyed at Namers.scala:383.
+          val (me, others) = derivedTrees.partition(s => s.symbol.isClass == sym.isClass && s.symbol.fullName == sym.fullName)
           rewrapAfterTransform(stat, me) ++ expandMacroAnnotations(others)
         } else {
           List(stat)
