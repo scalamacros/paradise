@@ -571,7 +571,7 @@ trait Namers {
 
     // see https://github.com/scalamacros/paradise/issues/7
     // also see https://github.com/scalamacros/paradise/issues/64
-    def patchedCompanionSymbolOf(original: Symbol, ctx: Context): Symbol = {
+    def patchedCompanionSymbolOf(original: Symbol, ctx: Context): Symbol = if (original == NoSymbol) NoSymbol else {
       val owner = original.owner
       // SI-7264 Force the info of owners from previous compilation runs.
       //         Doing this generally would trigger cycles; that's what we also
