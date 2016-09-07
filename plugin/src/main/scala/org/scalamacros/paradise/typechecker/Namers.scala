@@ -47,7 +47,7 @@ trait Namers {
       def coreCreateAssignAndEnterSymbol = {
         val sym = tree match {
           case PackageDef(pid, _) => createPackageSymbol(tree.pos, pid) // package symbols are entered elsewhere
-          case Import(_, _)       => createImportSymbol(tree) // import symbols are dummies, no need to enter them anywhere
+          case imp: Import        => createImportSymbol(imp) // import symbols are dummies, no need to enter them anywhere
           case mdef: MemberDef    => enterInScope(setPrivateWithin(mdef, createMemberSymbol(mdef, mdef.name, mask)))
           case _                  => abort("Unexpected tree: " + tree)
         }
@@ -282,7 +282,7 @@ trait Namers {
         case tree @ TypeDef(_, _, _, _) =>
           sym setInfo completerOf(tree)
         case tree @ Import(_, _) =>
-          sym setInfo completerOf(tree)
+          namerOf(tree.symbol) importTypeCompleter tree
       })
     }
 
