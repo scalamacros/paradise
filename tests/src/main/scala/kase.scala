@@ -110,7 +110,7 @@ object kaseMacro {
         val cbody4 = {
           val productPrefixMethod = DefDef(OverrideSyntheticMods, TermName("productPrefix"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
           val productArityMethod = DefDef(SyntheticMods, TermName("productArity"), Nil, Nil, TypeTree(), Literal(Constant(primaryParams.length)))
-          val productElementParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
+          val productElementParam = ValDef(ParamMods, TermName("x$1"), Select(Ident(TermName("scala")), TypeName("Int")), EmptyTree)
           def productElementByIndex(i: Int) = CaseDef(Literal(Constant(i)), EmptyTree, Select(This(name), primaryParams(i).name))
           val productElementFallback = CaseDef(Ident(termNames.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), termNames.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), TermName("toString")), List())))))
           val productElementBody = Match(Ident(productElementParam.name), (0 until primaryParams.length map productElementByIndex toList) :+ productElementFallback)
@@ -118,7 +118,7 @@ object kaseMacro {
           val scalaRunTime = Select(Select(Ident(TermName("scala")), TermName("runtime")), TermName("ScalaRunTime"))
           val productIteratorBody = Apply(TypeApply(Select(scalaRunTime, TermName("typedProductIterator")), List(Ident(TypeName("Any")))), List(This(name)))
           val productIteratorMethod = DefDef(OverrideSyntheticMods, TermName("productIterator"), Nil, Nil, TypeTree(), productIteratorBody)
-          val canEqualParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
+          val canEqualParam = ValDef(ParamMods, TermName("x$1"), Select(Ident(TermName("scala")), TypeName("Any")), EmptyTree)
           val canEqualBody = TypeApply(Select(Ident(canEqualParam.name), TermName("isInstanceOf")), List(ourExistentialType))
           val canEqualMethod = DefDef(SyntheticMods, TermName("canEqual"), Nil, List(List(canEqualParam)), TypeTree(), canEqualBody)
           cbody3 ++ List(productPrefixMethod, productArityMethod, productElementMethod, productIteratorMethod, canEqualMethod)
@@ -144,7 +144,7 @@ object kaseMacro {
 
         // step 7: inject equals
         val cbody7 = {
-          val equalsParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
+          val equalsParam = ValDef(ParamMods, TermName("x$1"), Select(Ident(TermName("scala")), TypeName("Any")), EmptyTree)
           val equalsBody = {
             def thisEqThat = {
               val thatAnyRef = TypeApply(Select(Ident(equalsParam.name), TermName("asInstanceOf")), List(Ident(TypeName("Object"))))
@@ -160,7 +160,7 @@ object kaseMacro {
               Match(Ident(equalsParam.name), List(ifSameType, otherwise))
             }
             def sameFieldsCheck = {
-              val thatC = ValDef(SyntheticMods, TermName(name.toString + "$1"), TypeTree(), TypeApply(Select(Ident(equalsParam.name), TermName("asInstanceOf")), List(ourPolyType)))
+              val thatC = ValDef(SyntheticMods, TermName(name.toString + "$1"), ourPolyType, TypeApply(Select(Ident(equalsParam.name), TermName("asInstanceOf")), List(ourPolyType)))
               val sameFieldsChecks = primaryParams.map(p => Apply(Select(Select(This(name), p.name), TermName("==").encodedName), List(Select(Ident(thatC.name), p.name))))
               val thatCanEqualThis = Apply(Select(Ident(thatC.name), TermName("canEqual")), List(This(name)))
               val sameFieldCheck = (sameFieldsChecks :+ thatCanEqualThis).reduceLeft((acc, check) => Apply(Select(acc, TermName("&&").encodedName), List(check)))
@@ -262,13 +262,13 @@ object kaseMacro {
       val body2 = {
         val productPrefixMethod = DefDef(OverrideSyntheticMods, TermName("productPrefix"), Nil, Nil, TypeTree(), Literal(Constant(name.toString)))
         val productArityMethod = DefDef(SyntheticMods, TermName("productArity"), Nil, Nil, TypeTree(), Literal(Constant(0)))
-        val productElementParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
+        val productElementParam = ValDef(ParamMods, TermName("x$1"), Select(Ident(TermName("scala")), TypeName("Int")), EmptyTree)
         val productElementBody = Match(Ident(productElementParam.name), List(CaseDef(Ident(termNames.WILDCARD), EmptyTree, Throw(Apply(Select(New(TypeTree(c.mirror.staticClass("scala.IndexOutOfBoundsException").toType)), termNames.CONSTRUCTOR), List(Apply(Select(Ident(productElementParam.name), TermName("toString")), List())))))))
         val productElementMethod = DefDef(SyntheticMods, TermName("productElement"), Nil, List(List(productElementParam )), TypeTree(), productElementBody)
         val scalaRunTime = Select(Select(Ident(TermName("scala")), TermName("runtime")), TermName("ScalaRunTime"))
         val productIteratorBody = Apply(TypeApply(Select(scalaRunTime, TermName("typedProductIterator")), List(Ident(TypeName("Any")))), List(This(name.toTypeName)))
         val productIteratorMethod = DefDef(OverrideSyntheticMods, TermName("productIterator"), Nil, Nil, TypeTree(), productIteratorBody)
-        val canEqualParam = ValDef(ParamMods, TermName("x$1"), TypeTree(), EmptyTree)
+        val canEqualParam = ValDef(ParamMods, TermName("x$1"), Select(Ident(TermName("scala")), TypeName("Any")), EmptyTree)
         val canEqualBody = TypeApply(Select(Ident(canEqualParam.name), TermName("isInstanceOf")), List(SingletonTypeTree(Ident(name))))
         val canEqualMethod = DefDef(SyntheticMods, TermName("canEqual"), Nil, List(List(canEqualParam)), TypeTree(), canEqualBody)
         body ++ List(productPrefixMethod, productArityMethod, productElementMethod, productIteratorMethod, canEqualMethod)
