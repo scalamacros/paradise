@@ -16,10 +16,9 @@ class Assorted extends FunSuite {
       |method foofoo
       |value barbar
       |value barbar
-      |method bazbaz
-      |method bazbaz_=
       |variable bazbaz
-      |value baxbax
+      |variable bazbaz
+      |variable bazbaz
       |lazy value baxbax
       |type TT
     """.trim.stripMargin)
