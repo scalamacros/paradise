@@ -1,4 +1,4 @@
 package issue48
 
-@deprecated("", "") case class C()
+@pkg.placebo case class C()
 

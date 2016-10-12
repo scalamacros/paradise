@@ -2,6 +2,6 @@ package object pkgTest {
 }
 
 package pkgTest {
-  @deprecated("", "")
+  @placebo
   class Z
 }
