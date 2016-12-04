@@ -3,7 +3,9 @@ import Keys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.11.8",
+    resolvers += "nightlies" at "https://scala-ci.typesafe.com/artifactory/scala-release-temp/",
+    scalaVersion := "2.11.9-264cc5f-nightly",
+    scalaBinaryVersion := "2.11",
     crossVersion := CrossVersion.full,
     version := "2.1.0-SNAPSHOT",
     organization := "org.scalamacros",
