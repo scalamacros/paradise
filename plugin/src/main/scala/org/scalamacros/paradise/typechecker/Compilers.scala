@@ -22,7 +22,7 @@ trait Compilers {
           val macroTransform = clazz.info.member(nme.macroTransform)
           if (macroTransform != NoSymbol) {
             clazz.setFlag(MACRO)
-            clazz.addAnnotation(AnnotationInfo(CompileTimeOnlyAttr.tpe, List(Literal(Constant(MacroAnnotationNotExpandedMessage)) setType StringClass.tpe), Nil))
+            if (clazz.getAnnotation(CompileTimeOnlyAttr).isEmpty) clazz.addAnnotation(AnnotationInfo(CompileTimeOnlyAttr.tpe, List(Literal(Constant(MacroAnnotationNotExpandedMessage)) setType StringClass.tpe), Nil))
             def flavorOk = macroTransform.isMacro
             def paramssOk = mmap(macroTransform.paramss)(p => (p.name, p.info)) == List(List((nme.annottees, scalaRepeatedType(AnyTpe))))
             def tparamsOk = macroTransform.typeParams.isEmpty
