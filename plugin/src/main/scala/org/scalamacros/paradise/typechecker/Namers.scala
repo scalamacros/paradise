@@ -271,8 +271,9 @@ trait Namers {
         case tree @ DefDef(mods, name, tparams, _, _, _) =>
           val bridgeFlag = if (mods hasAnnotationNamed tpnme.bridgeAnnot) BRIDGE | ARTIFACT else 0
           sym setFlag bridgeFlag
-          if (name == nme.copy && sym.isSynthetic) enterCopyMethod(tree)
-          else sym setInfo completerOf(tree)
+          sym setInfo (
+            if (name == nme.copy && sym.isSynthetic) copyMethodCompleter(tree)
+            else completerOf(tree))
         case tree @ TypeDef(_, _, _, _) =>
           sym setInfo completerOf(tree)
         case tree @ Import(_, _) =>
