@@ -106,16 +106,11 @@ trait Namers {
           }
           clazz
         case tree @ ModuleDef(mods, name, _) =>
-          def inCurrentScope(m: Symbol): Boolean = {
-            if (context.owner.isClass) context.owner == m.owner
-            else context.scope.lookupSymbolEntry(m) match {
-              case null => false
-              case entry => entry.owner eq context.scope
-            }
-          }
-          val moduleFlags = tree.mods.flags | MODULE
-          val existingModule = context.scope lookupModule tree.name
-          if (existingModule.isModule && !existingModule.hasPackageFlag && inCurrentScope(existingModule) && (currentRun.canRedefine(existingModule) || existingModule.isSynthetic)) {
+          var m: Symbol = context.scope lookupModule name
+          val moduleFlags = mods.flags | MODULE
+          // TODO: inCurrentScope(m) check that's present in vanilla Namer is omitted here
+          // this fixes SI-3772, but may break something else - I didn't have time to look into that
+          if (m.isModule && !m.hasPackageFlag && (currentRun.canRedefine(m) || m.isSynthetic || isExpanded(m))) {
             // This code accounts for the way the package objects found in the classpath are opened up
             // early by the completer of the package itself. If the `packageobjects` phase then finds
             // the same package object in sources, we have to clean the slate and remove package object
@@ -123,22 +118,21 @@ trait Namers {
             //
             // TODO SI-4695 Pursue the approach in https://github.com/scala/scala/pull/2789 that avoids
             //      opening up the package object on the classpath at all if one exists in source.
-            if (existingModule.isPackageObject) {
-              val packageScope = existingModule.enclosingPackageClass.rawInfo.decls
-              packageScope.foreach(mem => if (mem.owner != existingModule.enclosingPackageClass) packageScope unlink mem)
+            if (m.isPackageObject) {
+              val packageScope = m.enclosingPackageClass.rawInfo.decls
+              packageScope.filter(_.owner != m.enclosingPackageClass).toList.foreach(packageScope unlink _)
             }
-            updatePosFlags(existingModule, tree.pos, moduleFlags)
-            setPrivateWithin(tree, existingModule)
-            existingModule.moduleClass andAlso (setPrivateWithin(tree, _))
-            context.unit.synthetics -= existingModule
-            tree.symbol = existingModule
+            updatePosFlags(m, tree.pos, moduleFlags)
+            setPrivateWithin(tree, m)
+            m.moduleClass andAlso (setPrivateWithin(tree, _))
+            context.unit.synthetics -= m
+            tree.symbol = m
           }
           else {
-            val m = coreCreateAssignAndEnterSymbol
+            m = coreCreateAssignAndEnterSymbol
             m.moduleClass setFlag moduleClassFlags(moduleFlags)
             setPrivateWithin(tree, m.moduleClass)
           }
-          val m = tree.symbol
           m.moduleClass setInfo namerOf(m).moduleClassTypeCompleter(tree)
           if (m.isTopLevel && !m.hasPackageFlag) {
             m.moduleClass.associatedFile = contextFile
