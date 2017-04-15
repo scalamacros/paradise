@@ -42,7 +42,7 @@ class Repl extends FunSuite {
   }
 
   test("ad-hoc macros expand") {
-    assert(repl("""
+    val printout = repl("""
       |import scala.language.experimental.macros
       |import scala.reflect.macros.whitebox.Context
       |import scala.annotation.StaticAnnotation
@@ -74,56 +74,10 @@ class Repl extends FunSuite {
       |
       |@thingyAdhoc class Thingy
       |@thingyAdhoc class NonThingy
-    """.stripMargin.trim) === """
-scala> import scala.language.experimental.macros
-import scala.language.experimental.macros
-
-scala> import scala.reflect.macros.whitebox.Context
-import scala.reflect.macros.whitebox.Context
-
-scala> import scala.annotation.StaticAnnotation
-import scala.annotation.StaticAnnotation
-
-scala>
-
-scala> object thingyAdhocMacro {
-|   def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
-|     import c.universe._
-|     val toEmit = c.Expr(q"class Thingy(i: Int) { def stuff = println(i) }; object Thingy { def apply(x: Int) = new Thingy(x) }")
-|     annottees.map(_.tree) match {
-|       case Nil => {
-|         c.abort(c.enclosingPosition, "No test target")
-|       }
-|       case (classDeclaration: ClassDef) :: Nil => {
-|         // println("No companion provided")
-|         toEmit
-|       }
-|       case (classDeclaration: ClassDef) :: (companionDeclaration: ModuleDef) :: Nil => {
-|         // println("Companion provided")
-|         toEmit
-|       }
-|       case _ => c.abort(c.enclosingPosition, "Invalid test target")
-|     }
-|   }
-| }
-defined object thingyAdhocMacro
-
-scala>
-
-scala> class thingyAdhoc extends StaticAnnotation {
-|   def macroTransform(annottees: Any*): Any = macro thingyAdhocMacro.impl
-| }
-defined class thingyAdhoc
-
-scala>
-
-scala> @thingyAdhoc class Thingy
-defined class Thingy
-defined object Thingy
-
-scala> @thingyAdhoc class NonThingy
-defined class Thingy
-defined object Thingy
-""".trim)
+    """.stripMargin.trim)
+    assert(printout.contains("defined class Thingy"))
+    assert(printout.contains("defined object Thingy"))
+    assert(!printout.contains("defined class NonThingy"))
+    assert(!printout.contains("defined object NonThingy"))
   }
 }
