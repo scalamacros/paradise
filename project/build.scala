@@ -3,8 +3,7 @@ import Keys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.12.2",
-    resolvers += "Pre-release of Scala 2.12.2" at "https://oss.sonatype.org/content/repositories/orgscala-lang-1400/",
+    scalaVersion := "2.13.0-M1",
     crossVersion := CrossVersion.full,
     version := "2.1.0-SNAPSHOT",
     organization := "org.scalamacros",
