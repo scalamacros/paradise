@@ -131,24 +131,17 @@ object build extends Build {
   ) settings (
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+    libraryDependencies += "junit" % "junit" % "4.12" % "test",
+    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
+    testOptions += Tests.Argument(TestFrameworks.JUnit, "-q", "-v"),
     scalacOptions += "-Ywarn-unused-import",
     scalacOptions += "-Xfatal-warnings",
     publishArtifact in Compile := false,
-    unmanagedSourceDirectories in Test <<= (scalaSource in Test) { (root: File) =>
-      // TODO: I haven't yet ported negative tests to SBT, so for now I'm excluding them
-      val (anns :: Nil, others) = root.listFiles.toList.partition(_.getName == "annotations")
-      val (negAnns, otherAnns) = anns.listFiles.toList.partition(_.getName == "neg")
-      System.setProperty("sbt.paths.tests.scaladoc", anns.listFiles.toList.filter(_.getName == "scaladoc").head.getAbsolutePath)
-      otherAnns ++ others
-    },
     fullClasspath in Test := {
       val testcp = (fullClasspath in Test).value.files.map(_.getAbsolutePath).mkString(java.io.File.pathSeparatorChar.toString)
       sys.props("sbt.paths.tests.classpath") = testcp
       (fullClasspath in Test).value
     },
     scalacOptions ++= Seq()
-    // scalacOptions ++= Seq("-Xprint:typer")
-    // scalacOptions ++= Seq("-Xlog-implicits")
   )
 }
