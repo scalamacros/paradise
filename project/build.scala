@@ -8,14 +8,13 @@ import com.typesafe.tools.mima.plugin.MimaKeys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.10.6",
+    scalaVersion := "2.10.7",
     crossVersion := CrossVersion.full,
     version := "2.1.0-SNAPSHOT",
     organization := "org.scalamacros",
     description := "Empowers production Scala compiler with latest macro developments",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
-    resolvers += "staging-2.10.5" at "https://oss.sonatype.org/content/repositories/orgscala-lang-1186/",
     scalacOptions ++= Seq("-deprecation", "-feature", "-optimise"),
     parallelExecution in Test := false, // hello, reflection sync!!
     logBuffered := false,
