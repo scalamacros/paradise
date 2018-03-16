@@ -3,13 +3,14 @@ import Keys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.12.4",
+    scalaVersion := "2.12.5",
     crossVersion := CrossVersion.full,
     version := "2.1.0-SNAPSHOT",
     organization := "org.scalamacros",
     description := "Empowers production Scala compiler with latest macro developments",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers += "Sonatype staging" at "https://oss.sonatype.org/content/repositories/staging/",
     publishMavenStyle := true,
     publishArtifact in Test := false,
     scalacOptions ++= Seq("-deprecation", "-feature"),
