@@ -1,5 +1,5 @@
 lazy val sharedSettings = Seq(
-  scalaVersion  := "2.13.0-pre-1c56f0a",
+  scalaVersion  := "2.13.0-pre-4a5ecd4", // currently stuck before new collections got merged, since tests stop compiling with scala at 6ff3fac (as well as latest: 1c56f0a)
   scalaHome     := Option(System.getProperty("paradise.scala.home")).map(file(_)),
   scalacOptions ++= Seq("-deprecation", "-feature"),
 
