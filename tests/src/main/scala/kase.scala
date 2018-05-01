@@ -98,7 +98,7 @@ object kaseMacro {
             val secondaryCopyParamss = secondaryParamss.map(_.map(p => ValDef(unmakeDefault(unmakeCaseAccessor(p.mods)), p.name, p.tpt, EmptyTree)))
             val copyParamss = primaryCopyParamss :: secondaryCopyParamss
             val copyArgss = copyParamss.map(_.map(p => Ident(p.name)))
-            val copyBody = ((Select(New(Ident(cdef.name)), termNames.CONSTRUCTOR): Tree) /: copyArgss)((callee, args) => Apply(callee, args))
+            val copyBody = copyArgss.foldLeft(Select(New(Ident(cdef.name)), termNames.CONSTRUCTOR): Tree)((callee, args) => Apply(callee, args))
             val copyMethod = DefDef(SyntheticMods, TermName("copy"), copyTparams, copyParamss, TypeTree(), copyBody)
             cbody2 :+ copyMethod
           }
@@ -205,7 +205,7 @@ object kaseMacro {
           val applyTparams = tparams.map(p => TypeDef(unmakeVariant(p.mods), p.name, p.tparams, p.rhs))
           val applyParamss = primaryParamss.map(_.map(p => ValDef(unmakeCaseAccessor(p.mods), p.name, p.tpt, p.rhs)))
           val applyArgss = applyParamss.map(_.map(p => Ident(p.name)))
-          val applyBody = ((Select(New(ourPolyType), termNames.CONSTRUCTOR): Tree) /: applyArgss)((callee, args) => Apply(callee, args))
+          val applyBody = applyArgss.foldLeft(Select(New(ourPolyType), termNames.CONSTRUCTOR): Tree)((callee, args) => Apply(callee, args))
           val applyMethod = DefDef(SyntheticCaseMods, TermName("apply"), applyTparams, applyParamss, TypeTree(), applyBody)
           mbody1 :+ applyMethod
         }

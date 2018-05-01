@@ -3,13 +3,14 @@ import Keys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.13.0-M3",
+    scalaVersion := "2.13.0-pre-66da69b",
     crossVersion := CrossVersion.full,
     version := "2.1.0-SNAPSHOT",
     organization := "org.scalamacros",
     description := "Empowers production Scala compiler with latest macro developments",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
     publishMavenStyle := true,
     publishArtifact in Test := false,
     scalacOptions ++= Seq("-deprecation", "-feature"),
