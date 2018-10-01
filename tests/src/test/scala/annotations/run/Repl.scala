@@ -16,7 +16,8 @@ class Repl extends FunSuite {
       s.usejavacp.value = false
       s.classpath.value = sys.props("sbt.paths.tests.classpath")
       s.plugin.value = List(sys.props("sbt.paths.plugin.jar"))
-      val lines = ILoop.runForTranscript(code, s).lines.toList
+      // Predef.augmentString = work around scala/bug#11125 on JDK 11
+      val lines = Predef.augmentString(ILoop.runForTranscript(code, s)).lines.toList
       // TODO: I don't know why but setting replProps.colorOk to false doesn't help.
       // I don't have time to figure out what's going on, so I'll do simple string replacement.
       def cleanup(line: String) = line.replace(MAGENTA, "").replace(RESET, "").trim
