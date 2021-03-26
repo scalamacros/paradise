@@ -1,11 +1,12 @@
 ## Macro Paradise Plugin
 
-This plugin is no longer actively maintained. As of 2.13.x, is has been included in the compiler (but its status remains the same: experimental, API subject to change).
+This plugin is no longer actively developed, but we do continue to release a new version whenever a new Scala 2.12.x version comes out.
 
-[![Join the chat at https://gitter.im/scalamacros/paradise](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/scalamacros/paradise?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+In Scala 2.13, the plugin's functionality has been included in the compiler directly under the `-Ymacro-annotations` flag. (Regardless, its status remains the same: experimental, API subject to change.)
 
 [http://docs.scala-lang.org/overviews/macros/paradise.html](http://docs.scala-lang.org/overviews/macros/paradise.html)
 
+[![Join the chat at https://gitter.im/scalamacros/paradise](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/scalamacros/paradise?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ### Cutting a release
 
