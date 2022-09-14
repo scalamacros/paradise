@@ -34,3 +34,5 @@ $> git tag -s -m "2.1.1 for Scala 2.12.XY" v2.1.1_2.12.XY HEAD
 
 $> git push upstream v2.1.1_2.12.XY
 ```
+
+Then you'll need to close and release the staging repo, via https://oss.sonatype.org/#stagingRepositories, or with a command-line tool if you prefer.
