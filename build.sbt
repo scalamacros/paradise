@@ -3,7 +3,7 @@ lazy val sharedSettings = Seq(
   scalaHome     := Option(System.getProperty("paradise.scala.home")).map(file(_)),
   scalacOptions ++= Seq("-deprecation", "-feature"),
 
-  version       := "2.1.0-SNAPSHOT",
+  version       := "2.1.1",
   crossVersion  := CrossVersion.full,
   organization  := "org.scalamacros",
   description   := "Empowers production Scala compiler with latest macro developments",
@@ -13,7 +13,9 @@ lazy val sharedSettings = Seq(
   resolvers     += "Sonatype staging" at "https://oss.sonatype.org/content/repositories/staging/",
 
   parallelExecution in Test := false, // hello, reflection sync!!
-  logBuffered               := false
+  logBuffered               := false,
+
+  useGpg := true
 )
 
 def sonaCredentials: Option[Credentials] =

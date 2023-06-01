@@ -12,7 +12,8 @@ In Scala 2.13, the plugin's functionality has been included in the compiler dire
 
 Do it on your own machine. The GPG key is used for scala modules, talk to [@lrytz](https://github.com/lrytz/) if you need the passphrase.
 
-Update the `scalaVersion` in the build, then
+Update the `scalaVersion` in the build, and the `version` if needed,
+point your `JAVA_HOME` to Java 8, then
 
 ```
 $> java -version
@@ -23,10 +24,8 @@ OpenJDK 64-Bit Server VM (AdoptOpenJDK)(build 25.222-b10, mixed mode)
 $> export SONA_USER=⛄️ SONA_PASS=🌨
 
 $> sbt \
-  'set version := "2.1.1"' \
   'set pgpSigningKey := Some(new java.math.BigInteger("C478A820AD150412FF2860C563426A08B91ED6B0", 16).longValue)' \
   'set pgpPassphrase := Some(Array.empty)' \
-  'set useGpg := true' \
   clean \
   publishSigned
 
