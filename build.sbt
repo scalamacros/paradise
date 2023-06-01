@@ -1,5 +1,5 @@
 lazy val sharedSettings = Seq(
-  scalaVersion  := "2.12.17",
+  scalaVersion  := "2.12.18",
   scalaHome     := Option(System.getProperty("paradise.scala.home")).map(file(_)),
   scalacOptions ++= Seq("-deprecation", "-feature"),
 
