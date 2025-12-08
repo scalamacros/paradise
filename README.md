@@ -21,13 +21,9 @@ openjdk version "1.8.0_222"
 OpenJDK Runtime Environment (AdoptOpenJDK)(build 1.8.0_222-b10)
 OpenJDK 64-Bit Server VM (AdoptOpenJDK)(build 25.222-b10, mixed mode)
 
-$> export SONA_USER=⛄️ SONA_PASS=🌨
+$> export SONATYPE_USERNAME=⛄️ SONATYPE_PASSWORD=🌨
 
-$> sbt \
-  'set pgpSigningKey := Some(new java.math.BigInteger("C478A820AD150412FF2860C563426A08B91ED6B0", 16).longValue)' \
-  'set pgpPassphrase := Some(Array.empty)' \
-  clean \
-  publishSigned
+$> sbt clean publishSigned sonaRelease
 
 $> git tag -s -m "2.1.1 for Scala 2.12.XY" v2.1.1_2.12.XY HEAD
 

@@ -8,21 +8,9 @@ lazy val sharedSettings = Seq(
   organization  := "org.scalamacros",
   description   := "Empowers production Scala compiler with latest macro developments",
 
-  resolvers     += Resolver.sonatypeRepo("snapshots"),
-  resolvers     += Resolver.sonatypeRepo("releases"),
-  resolvers     += "Sonatype staging" at "https://oss.sonatype.org/content/repositories/staging/",
-
   parallelExecution in Test := false, // hello, reflection sync!!
   logBuffered               := false,
-
-  useGpg := true
 )
-
-def sonaCredentials: Option[Credentials] =
-  for {
-    sonaUser <- Option(System.getenv("SONA_USER"))
-    sonaPass <- Option(System.getenv("SONA_PASS"))
-   } yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org",sonaUser, sonaPass)
 
 lazy val plugin = Project(
   id   = "paradise",
@@ -39,13 +27,14 @@ lazy val plugin = Project(
   publishMavenStyle := true,
   publishArtifact in Test := false,
 
-  publishTo := Some {
-    val nexus = "https://oss.sonatype.org/"
-    if (version.value.trim.endsWith("SNAPSHOT")) "snapshots" at nexus + "content/repositories/snapshots"
-    else "releases" at nexus + "service/local/staging/deploy/maven2"
+  publishTo := {
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+    else localStaging.value
   },
 
-  credentials ++= sonaCredentials.toSeq,
+  usePgpKeyHex("C478A820AD150412FF2860C563426A08B91ED6B0"),
+
   pomIncludeRepository := { x => false },
   pomExtra := (
     <url>https://github.com/scalamacros/paradise</url>
