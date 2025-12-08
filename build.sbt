@@ -8,7 +8,7 @@ lazy val sharedSettings = Seq(
   organization  := "org.scalamacros",
   description   := "Empowers production Scala compiler with latest macro developments",
 
-  parallelExecution in Test := false, // hello, reflection sync!!
+  Test / parallelExecution := false, // hello, reflection sync!!
   logBuffered               := false,
 )
 
@@ -18,14 +18,14 @@ lazy val plugin = Project(
 ) settings (
   sharedSettings : _*
 ) settings (
-  resourceDirectory in Compile := baseDirectory.value / "src" / "main" / "scala" / "org" / "scalamacros" / "paradise" / "embedded",
+  Compile / resourceDirectory := baseDirectory.value / "src" / "main" / "scala" / "org" / "scalamacros" / "paradise" / "embedded",
 
   libraryDependencies += "org.scala-lang" % "scala-library"  % scalaVersion.value,
   libraryDependencies += "org.scala-lang" % "scala-reflect"  % scalaVersion.value,
   libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
 
   publishMavenStyle := true,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
 
   publishTo := {
     val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
@@ -65,8 +65,8 @@ lazy val plugin = Project(
 )
 
 lazy val usePluginSettings = Seq(
-  scalacOptions in Compile ++= {
-    val jar = (Keys.`package` in (plugin, Compile)).value
+  Compile / scalacOptions ++= {
+    val jar = (plugin / Compile / Keys.`package`).value
     System.setProperty("sbt.paths.plugin.jar", jar.getAbsolutePath)
 
     val addPlugin = "-Xplugin:" + jar.getAbsolutePath
@@ -85,7 +85,7 @@ lazy val sandbox = Project(
   sharedSettings ++ usePluginSettings: _*
 ) settings (
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  publishArtifact in Compile := false
+  Compile / publishArtifact := false
 )
 
 lazy val tests = Project(
@@ -101,18 +101,18 @@ lazy val tests = Project(
   scalacOptions += "-Ywarn-unused-import",
   scalacOptions += "-Xfatal-warnings",
 
-  publishArtifact in Compile := false,
+  Compile / publishArtifact := false,
 
-  unmanagedSourceDirectories in Test := {
+  Test / unmanagedSourceDirectories := {
     // TODO: I haven't yet ported negative tests to SBT, so for now I'm excluding them
-    val (anns :: Nil, others) = (scalaSource in Test).value.listFiles.toList.partition(_.getName == "annotations")
+    val (anns :: Nil, others) = (Test / scalaSource).value.listFiles.toList.partition(_.getName == "annotations")
     val (negAnns, otherAnns) = anns.listFiles.toList.partition(_.getName == "neg")
     System.setProperty("sbt.paths.tests.scaladoc", anns.listFiles.toList.filter(_.getName == "scaladoc").head.getAbsolutePath)
     otherAnns ++ others
   },
-  fullClasspath in Test := {
-    val testcp = (fullClasspath in Test).value.files.map(_.getAbsolutePath).mkString(java.io.File.pathSeparatorChar.toString)
+  Test / fullClasspath := {
+    val testcp = (Test / fullClasspath).value.files.map(_.getAbsolutePath).mkString(java.io.File.pathSeparatorChar.toString)
     sys.props("sbt.paths.tests.classpath") = testcp
-    (fullClasspath in Test).value
+    (Test / fullClasspath).value
   }
 )
